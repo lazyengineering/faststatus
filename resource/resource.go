@@ -4,6 +4,8 @@
 package resource
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -30,11 +32,22 @@ func (r Resource) String() string {
 
 // MarshalJson will return simple a simple json structure for a resource.
 func (r Resource) MarshalJson() ([]byte, error) {
-	return []byte{}, nil
+	tmpResource := struct {
+		Id           string    `json:"id"`
+		FriendlyName string    `json:"friendlyName"`
+		Status       Status    `json:"status"`
+		Since        time.Time `json:"since"`
+	}{
+		fmt.Sprintf("%X", r.Id),
+		r.FriendlyName,
+		r.Status.inRange(),
+		r.Since,
+	}
+	return json.Marshal(tmpResource)
 }
 
 // UnmarshalJson will populate a Resource with data from a json struct
 // according to the same format as MarshalJson
 func (r *Resource) UnmarshalJson(json []byte) error {
-	return nil
+	return errors.New("Not Implemented")
 }

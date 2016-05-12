@@ -72,3 +72,70 @@ func TestResourceString(t *testing.T) {
 		}
 	}
 }
+
+func TestResourceMarshalJson(t *testing.T) {
+	type jsonTest struct {
+		Expected string
+		Resource Resource
+	}
+	tests := []jsonTest{
+		jsonTest{ // Zero Value
+			Expected: "{\"id\":\"0\",\"friendlyName\":\"\",\"status\":0,\"since\":\"0001-01-01T00:00:00Z\"}",
+		},
+		jsonTest{ // Valid Busy
+			Expected: "{\"id\":\"1\",\"friendlyName\":\"First One\",\"status\":1,\"since\":\"2016-05-12T16:25:00-07:00\"}",
+			Resource: Resource{
+				Id:           1,
+				FriendlyName: "First One",
+				Status:       Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		jsonTest{ // Valid Free
+			Expected: "{\"id\":\"F\",\"friendlyName\":\"Second One\",\"status\":0,\"since\":\"2016-05-12T16:27:00-07:00\"}",
+			Resource: Resource{
+				Id:           15,
+				FriendlyName: "Second One",
+				Status:       Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		jsonTest{ // Valid Occupied
+			Expected: "{\"id\":\"AF\",\"friendlyName\":\"Third One\",\"status\":2,\"since\":\"2016-05-12T16:28:00-07:00\"}",
+			Resource: Resource{
+				Id:           175,
+				FriendlyName: "Third One",
+				Status:       Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		jsonTest{ // Out of Range
+			Expected: "{\"id\":\"DAF\",\"friendlyName\":\"Another One\",\"status\":0,\"since\":\"2016-05-12T16:30:00-07:00\"}",
+			Resource: Resource{
+				Id:           3503,
+				FriendlyName: "Another One",
+				Status:       Occupied + 1,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:30:00-07:00")
+					return tt
+				}(),
+			},
+		},
+	}
+	for _, st := range tests {
+		if actual, err := st.Resource.MarshalJson(); err != nil {
+			t.Error(err)
+		} else if string(actual) != st.Expected {
+			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", string(actual))
+		}
+	}
+}

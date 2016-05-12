@@ -25,22 +25,29 @@ const (
 // Use Pretty instead for those representations. Out of range
 // Status values will be returned the same as Free.
 func (s Status) String() string {
-	if s > Occupied {
-		s = Free
-	}
-	return strconv.FormatUint(uint64(s), 10)
+	return strconv.FormatUint(uint64(s.inRange()), 10)
 }
 
 // For those few times where the pretty version of the status
 // is requested, Pretty() will return the full text representation.
 // Out of range status values will be returned as "Free".
 func (s Status) Pretty() string {
-	switch s {
+	switch s.inRange() {
 	case Busy:
 		return "Busy"
 	case Occupied:
 		return "Occupied"
-	default:
+	case Free:
 		return "Free"
+	default: // this should be impossible...
+		return ""
 	}
+}
+
+// Return a valid Status in Range (only for use inside this package)
+func (s Status) inRange() Status {
+	if s > Occupied {
+		return Free
+	}
+	return s
 }
