@@ -4,14 +4,37 @@
 package resource
 
 import (
+	"fmt"
 	"time"
 )
 
 // A Resource represents any resource (a person, a bathroom, a server, etc.)
 // that needs to communicate how busy it is.
 type Resource struct {
-	Id           uint
-	FriendlyName string
-	Status       Status
-	Since        time.Time
+	Id           uint64    `json:"id"`
+	FriendlyName string    `json:"friendlyName"`
+	Status       Status    `json:"status"`
+	Since        time.Time `json:"since"`
+}
+
+const resourceFmtString = "%s %v %016X %s\n"
+
+// String will return a single-line representation of a resource.
+// In order to optimize for standard streams, the output is as follows:
+//   {{Since}}\t{{Status}}\t{{Id}}\t{{FriendlyName}}
+// Formatted as follows:
+//   2006-01-02T15:04:05Z07:00 1 0123456789ABCDEF My Resource
+func (r Resource) String() string {
+	return fmt.Sprintf(resourceFmtString, r.Since.Format(time.RFC3339), r.Status, r.Id, r.FriendlyName)
+}
+
+// MarshalJson will return simple a simple json structure for a resource.
+func (r Resource) MarshalJson() ([]byte, error) {
+	return []byte{}, nil
+}
+
+// UnmarshalJson will populate a Resource with data from a json struct
+// according to the same format as MarshalJson
+func (r *Resource) UnmarshalJson(json []byte) error {
+	return nil
 }
