@@ -39,3 +39,36 @@ func TestStatusString(t *testing.T) {
 		}
 	}
 }
+
+func TestStatusPretty(t *testing.T) {
+	type stringTest struct {
+		Expected string
+		Status   Status
+	}
+	tests := []stringTest{
+		stringTest{ // Zero Value
+			Expected: "Free",
+		},
+		stringTest{ // Free
+			Expected: "Free",
+			Status:   Free,
+		},
+		stringTest{ // Busy
+			Expected: "Busy",
+			Status:   Busy,
+		},
+		stringTest{ // Occupied
+			Expected: "Occupied",
+			Status:   Occupied,
+		},
+		stringTest{ // Out of Range
+			Expected: "Free",
+			Status:   Occupied + 1,
+		},
+	}
+	for _, st := range tests {
+		if actual := st.Status.Pretty(); actual != st.Expected {
+			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
+		}
+	}
+}
