@@ -5,6 +5,7 @@ package resource
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
 )
 
@@ -26,14 +27,14 @@ const (
 // Use Pretty instead for those representations. Out of range
 // Status values will be returned the same as Free.
 func (s Status) String() string {
-	return strconv.FormatUint(uint64(s.inRange()), 10)
+	return strconv.FormatUint(uint64(s.forceRange()), 10)
 }
 
 // For those few times where the pretty version of the status
 // is requested, Pretty() will return the full text representation.
 // Out of range status values will be returned as "Free".
 func (s Status) Pretty() string {
-	switch s.inRange() {
+	switch s.forceRange() {
 	case Busy:
 		return "Busy"
 	case Occupied:
@@ -45,9 +46,15 @@ func (s Status) Pretty() string {
 	}
 }
 
+var ErrOutOfRange = errors.New("Status not in valid range")
+
+func (s Status) inRange() bool {
+	return s <= Occupied
+}
+
 // Return a valid Status in Range (only for use inside this package)
-func (s Status) inRange() Status {
-	if s > Occupied {
+func (s Status) forceRange() Status {
+	if !s.inRange() {
 		return Free
 	}
 	return s
@@ -55,7 +62,10 @@ func (s Status) inRange() Status {
 
 // MarshalJSON will return a numeric value in the valid range of Status values
 func (s Status) MarshalJSON() ([]byte, error) {
-	return json.Marshal(uint8(s.inRange()))
+	if !s.inRange() {
+		return nil, ErrOutOfRange
+	}
+	return json.Marshal(uint8(s))
 }
 
 // UnmarshalJSON will assign a valid Status value from a numeric value.
@@ -64,6 +74,10 @@ func (s *Status) UnmarshalJSON(raw []byte) error {
 	if err := json.Unmarshal(raw, t); err != nil {
 		return err
 	}
-	*s = Status(*t).inRange()
+	*s = Status(*t)
+	if !s.inRange() {
+		*s = Free // set to zero value by default
+		return ErrOutOfRange
+	}
 	return nil
 }

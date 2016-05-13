@@ -5,6 +5,7 @@ package resource
 
 import (
 	"encoding/json" // because we explicitly want to work with the standard library json package
+	"strings"
 	"testing"
 )
 
@@ -75,69 +76,83 @@ func TestStatusPretty(t *testing.T) {
 }
 
 func TestStatusMarshalJSON(t *testing.T) {
+	type testResponse struct {
+		Value []byte
+		Err   error
+	}
 	type jsonTest struct {
-		Expected string
-		Status   Status
+		Input    Status
+		Expected testResponse
 	}
 	tests := []jsonTest{
 		jsonTest{ // Zero Value
-			Expected: "0",
+			Expected: testResponse{[]byte("0"), nil},
 		},
 		jsonTest{ // Free
-			Expected: "0",
-			Status:   Free,
+			Input:    Free,
+			Expected: testResponse{[]byte("0"), nil},
 		},
 		jsonTest{ // Busy
-			Expected: "1",
-			Status:   Busy,
+			Input:    Busy,
+			Expected: testResponse{[]byte("1"), nil},
 		},
 		jsonTest{ // Occupied
-			Expected: "2",
-			Status:   Occupied,
+			Input:    Occupied,
+			Expected: testResponse{[]byte("2"), nil},
 		},
 		jsonTest{ // Out of Range
-			Expected: "0",
-			Status:   Occupied + 1,
+			Input:    Occupied + 1,
+			Expected: testResponse{[]byte(""), ErrOutOfRange},
 		},
 	}
 	for _, st := range tests {
-		if actual, err := json.Marshal(st.Status); err != nil {
-			t.Error(err)
-		} else if string(actual) != st.Expected {
-			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", string(actual))
+		if actual, err := json.Marshal(st.Input); !rootError(err, st.Expected.Err) || string(actual) != string(st.Expected.Value) {
+			t.Errorf("\nexpected:\t%q\t%q\n  actual:\t%q\t%q", string(st.Expected.Value), st.Expected.Err, string(actual), err)
 		}
 	}
 }
 
+// compare two errors to see if they are both nil or e contains root
+func rootError(e, root error) bool {
+	if e == nil && root == nil {
+		return true
+	} else if e == nil || root == nil {
+		return false
+	}
+	return strings.Contains(e.Error(), root.Error())
+}
+
 func TestStatusUnmarshalJSON(t *testing.T) {
+	type testResponse struct {
+		Value Status
+		Err   error
+	}
 	type jsonTest struct {
-		Raw      []byte
-		Expected Status
+		Input    []byte
+		Expected testResponse
 	}
 	tests := []jsonTest{
 		jsonTest{ // Free
-			Raw:      []byte("0"),
-			Expected: Free,
+			Input:    []byte("0"),
+			Expected: testResponse{Free, nil},
 		},
 		jsonTest{ // Busy
-			Raw:      []byte("1"),
-			Expected: Busy,
+			Input:    []byte("1"),
+			Expected: testResponse{Busy, nil},
 		},
 		jsonTest{ // Occupied
-			Raw:      []byte("2"),
-			Expected: Occupied,
+			Input:    []byte("2"),
+			Expected: testResponse{Occupied, nil},
 		},
 		jsonTest{ // Out of Range
-			Raw:      []byte("3"),
-			Expected: Free,
+			Input:    []byte("3"),
+			Expected: testResponse{0, ErrOutOfRange},
 		},
 	}
 	for _, st := range tests {
 		actual := new(Status)
-		if err := json.Unmarshal(st.Raw, actual); err != nil {
-			t.Error(err)
-		} else if *actual != st.Expected {
-			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
+		if err := json.Unmarshal(st.Input, actual); !rootError(err, st.Expected.Err) || *actual != st.Expected.Value {
+			t.Errorf("\nexpected:\t%v\t%q\n  actual:\t%v\t%q", uint8(st.Expected.Value), st.Expected.Err, uint8(*actual), err)
 		}
 	}
 }

@@ -19,7 +19,7 @@ type Resource struct {
 	Since        time.Time
 }
 
-const resourceFmtString = "%s %v %016X %s\n"
+const resourceFmtString = "%s %v %016X %s"
 
 // String will return a single-line representation of a resource.
 // In order to optimize for standard streams, the output is as follows:
