@@ -107,3 +107,39 @@ func TestStatusMarshalJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestStatusUnmarshalJSON(t *testing.T) {
+	type jsonTest struct {
+		Raw      []byte
+		Expected Status
+	}
+	tests := []jsonTest{
+		jsonTest{ // Zero Value
+			Expected: Free,
+		},
+		jsonTest{ // Free
+			Raw:      []byte("0"),
+			Expected: Free,
+		},
+		jsonTest{ // Busy
+			Raw:      []byte("1"),
+			Expected: Busy,
+		},
+		jsonTest{ // Occupied
+			Raw:      []byte("2"),
+			Expected: Occupied,
+		},
+		jsonTest{ // Out of Range
+			Raw:      []byte("3"),
+			Expected: Free,
+		},
+	}
+	for _, st := range tests {
+		actual := new(Status)
+		if err := actual.UnmarshalJSON(st.Raw); err != nil {
+			t.Error(err)
+		} else if *actual != st.Expected {
+			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
+		}
+	}
+}

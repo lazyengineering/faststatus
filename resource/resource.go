@@ -5,18 +5,18 @@ package resource
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
 // A Resource represents any resource (a person, a bathroom, a server, etc.)
 // that needs to communicate how busy it is.
 type Resource struct {
-	Id           uint64    `json:"id"`
-	FriendlyName string    `json:"friendlyName"`
-	Status       Status    `json:"status"`
-	Since        time.Time `json:"since"`
+	Id           uint64
+	FriendlyName string
+	Status       Status
+	Since        time.Time
 }
 
 const resourceFmtString = "%s %v %016X %s\n"
@@ -47,7 +47,29 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJson will populate a Resource with data from a json struct
-// according to the same format as MarshalJSON
-func (r *Resource) UnmarshalJson(json []byte) error {
-	return errors.New("Not Implemented")
+// according to the same format as MarshalJSON. A new Resource is allocated
+// here.
+func (r *Resource) UnmarshalJSON(raw []byte) error {
+	// allow zero values with omitempty
+	tmp := new(struct {
+		Id           string    `json:",omitempty"`
+		FriendlyName string    `json:",omitempty"`
+		Status       Status    `json:",omitempty"`
+		Since        time.Time `json:",omitempty"`
+	})
+	if err := json.Unmarshal(raw, tmp); err != nil {
+		return err
+	}
+	r.FriendlyName = tmp.FriendlyName
+	r.Status = tmp.Status
+	r.Since = tmp.Since
+	if len(tmp.Id) == 0 {
+		tmp.Id = "0"
+	}
+	if id, err := strconv.ParseUint(tmp.Id, 16, 64); err != nil {
+		return err
+	} else {
+		r.Id = id
+	}
+	return nil
 }

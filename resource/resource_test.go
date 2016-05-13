@@ -139,3 +139,92 @@ func TestResourceMarshalJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestResourceUnmarshalJSON(t *testing.T) {
+	type jsonTest struct {
+		Raw      []byte
+		Expected Resource
+	}
+	tests := []jsonTest{
+		jsonTest{ // Zero Value
+			Raw:      []byte(`{}`),
+			Expected: Resource{},
+		},
+		jsonTest{ // Valid Busy
+			Raw: []byte(`{
+				"id":"1",
+				"friendlyName":"First One",
+				"status":1,
+				"since":"2016-05-12T16:25:00-07:00"
+			}`),
+			Expected: Resource{
+				Id:           1,
+				FriendlyName: "First One",
+				Status:       Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		jsonTest{ // Valid Free
+			Raw: []byte(`{
+				"id":"F",
+				"friendlyName":"Second One",
+				"status":0,
+				"since":"2016-05-12T16:27:00-07:00"
+			}`),
+			Expected: Resource{
+				Id:           15,
+				FriendlyName: "Second One",
+				Status:       Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		jsonTest{ // Valid Occupied
+			Raw: []byte(`{
+				"id":"AF",
+				"friendlyName":"Third One",
+				"status":2,
+				"since":"2016-05-12T16:28:00-07:00"
+			}`),
+			Expected: Resource{
+				Id:           175,
+				FriendlyName: "Third One",
+				Status:       Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		jsonTest{ // Out of Range
+			Raw: []byte(`{
+				"id":"DAF",
+				"friendlyName":"Another One",
+				"status":3,
+				"since":"2016-05-12T16:30:00-07:00"
+			}`),
+			Expected: Resource{
+				Id:           3503,
+				FriendlyName: "Another One",
+				Status:       Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:30:00-07:00")
+					return tt
+				}(),
+			},
+		},
+	}
+	for _, st := range tests {
+		actual := new(Resource)
+		if err := actual.UnmarshalJSON(st.Raw); err != nil {
+			t.Error(err)
+		} else if *actual != st.Expected {
+			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
+		}
+	}
+}
