@@ -4,6 +4,7 @@
 package resource
 
 import (
+	"encoding/json" // because we explicitly want to work with the standard library json package
 	"testing"
 )
 
@@ -100,7 +101,7 @@ func TestStatusMarshalJSON(t *testing.T) {
 		},
 	}
 	for _, st := range tests {
-		if actual, err := st.Status.MarshalJSON(); err != nil {
+		if actual, err := json.Marshal(st.Status); err != nil {
 			t.Error(err)
 		} else if string(actual) != st.Expected {
 			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", string(actual))
@@ -114,9 +115,6 @@ func TestStatusUnmarshalJSON(t *testing.T) {
 		Expected Status
 	}
 	tests := []jsonTest{
-		jsonTest{ // Zero Value
-			Expected: Free,
-		},
 		jsonTest{ // Free
 			Raw:      []byte("0"),
 			Expected: Free,
@@ -136,7 +134,7 @@ func TestStatusUnmarshalJSON(t *testing.T) {
 	}
 	for _, st := range tests {
 		actual := new(Status)
-		if err := actual.UnmarshalJSON(st.Raw); err != nil {
+		if err := json.Unmarshal(st.Raw, actual); err != nil {
 			t.Error(err)
 		} else if *actual != st.Expected {
 			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)

@@ -60,14 +60,10 @@ func (s Status) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON will assign a valid Status value from a numeric value.
 func (s *Status) UnmarshalJSON(raw []byte) error {
-	t := string(raw)
-	if len(t) == 0 { // cover the zero value
-		t = "0"
-	}
-	if id, err := strconv.ParseUint(t, 10, 8); err != nil {
+	t := new(uint8)
+	if err := json.Unmarshal(raw, t); err != nil {
 		return err
-	} else {
-		*s = Status(id).inRange()
 	}
+	*s = Status(*t).inRange()
 	return nil
 }

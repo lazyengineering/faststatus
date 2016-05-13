@@ -4,6 +4,7 @@
 package resource
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 )
@@ -132,7 +133,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 		},
 	}
 	for _, st := range tests {
-		if actual, err := st.Resource.MarshalJSON(); err != nil {
+		if actual, err := json.Marshal(st.Resource); err != nil {
 			t.Error(err)
 		} else if string(actual) != st.Expected {
 			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", string(actual))
@@ -221,7 +222,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 	}
 	for _, st := range tests {
 		actual := new(Resource)
-		if err := actual.UnmarshalJSON(st.Raw); err != nil {
+		if err := json.Unmarshal(st.Raw, actual); err != nil {
 			t.Error(err)
 		} else if *actual != st.Expected {
 			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
