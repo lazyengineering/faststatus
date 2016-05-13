@@ -31,6 +31,8 @@ func (r Resource) String() string {
 }
 
 // MarshalJSON will return simple a simple json structure for a resource.
+// Will not accept any Status that is out of range; see Status documentation
+// for more information.
 func (r Resource) MarshalJSON() ([]byte, error) {
 	tmpResource := struct {
 		Id           string    `json:"id"`
@@ -47,8 +49,8 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJson will populate a Resource with data from a json struct
-// according to the same format as MarshalJSON. A new Resource is allocated
-// here.
+// according to the same format as MarshalJSON. Will overwrite any values
+// already assigned to the Resource.
 func (r *Resource) UnmarshalJSON(raw []byte) error {
 	// allow zero values with omitempty
 	tmp := new(struct {

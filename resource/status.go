@@ -60,7 +60,9 @@ func (s Status) forceRange() Status {
 	return s
 }
 
-// MarshalJSON will return a numeric value in the valid range of Status values
+// MarshalJSON will return a numeric value in the valid range of Status values.
+// Will return `ErrOutOfRange` for a status that is higher than the defined
+// status values.
 func (s Status) MarshalJSON() ([]byte, error) {
 	if !s.inRange() {
 		return nil, ErrOutOfRange
@@ -69,6 +71,8 @@ func (s Status) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON will assign a valid Status value from a numeric value.
+// Will return `ErrOutOfRange` for a status that is higher than the defined
+// status values.
 func (s *Status) UnmarshalJSON(raw []byte) error {
 	t := new(uint8)
 	if err := json.Unmarshal(raw, t); err != nil {
