@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Expects [0xId] [Status] [Since] [FriendlyName]
 func TestResourceString(t *testing.T) {
 	type stringTest struct {
 		Expected string
@@ -16,10 +17,10 @@ func TestResourceString(t *testing.T) {
 	}
 	tests := []stringTest{
 		stringTest{ // Zero Value
-			Expected: "0001-01-01T00:00:00Z 0 0000000000000000 ",
+			Expected: "0000000000000000 0 0001-01-01T00:00:00Z ",
 		},
 		stringTest{ // Valid Busy
-			Expected: "2016-05-12T15:09:00-07:00 1 0000000000000001 First One",
+			Expected: "0000000000000001 1 2016-05-12T15:09:00-07:00 First One",
 			Resource: Resource{
 				Id:           1,
 				FriendlyName: "First One",
@@ -31,7 +32,7 @@ func TestResourceString(t *testing.T) {
 			},
 		},
 		stringTest{ // Valid Free
-			Expected: "2016-05-12T15:39:00-07:00 0 000000000000000F Second One",
+			Expected: "000000000000000F 0 2016-05-12T15:39:00-07:00 Second One",
 			Resource: Resource{
 				Id:           15,
 				FriendlyName: "Second One",
@@ -43,7 +44,7 @@ func TestResourceString(t *testing.T) {
 			},
 		},
 		stringTest{ // Valid Occupied
-			Expected: "2016-05-12T15:40:00-07:00 2 00000000000000AF Third One",
+			Expected: "00000000000000AF 2 2016-05-12T15:40:00-07:00 Third One",
 			Resource: Resource{
 				Id:           175,
 				FriendlyName: "Third One",
@@ -55,7 +56,7 @@ func TestResourceString(t *testing.T) {
 			},
 		},
 		stringTest{ // Out of Range
-			Expected: "2016-05-12T15:43:00-07:00 0 0000000000000DAF Another One",
+			Expected: "0000000000000DAF 0 2016-05-12T15:43:00-07:00 Another One",
 			Resource: Resource{
 				Id:           3503,
 				FriendlyName: "Another One",

@@ -19,15 +19,15 @@ type Resource struct {
 	Since        time.Time
 }
 
-const resourceFmtString = "%s %v %016X %s"
+const resourceFmtString = "%016X %v %s %s"
 
 // String will return a single-line representation of a resource.
 // In order to optimize for standard streams, the output is as follows:
-//   {{Since}}\t{{Status}}\t{{Id}}\t{{FriendlyName}}
+//   {{Id}} {{Status}} {{Since}} {{FriendlyName}}
 // Formatted as follows:
-//   2006-01-02T15:04:05Z07:00 1 0123456789ABCDEF My Resource
+//   0123456789ABCDEF 1 2006-01-02T15:04:05Z07:00 My Resource
 func (r Resource) String() string {
-	return fmt.Sprintf(resourceFmtString, r.Since.Format(time.RFC3339), r.Status, r.Id, r.FriendlyName)
+	return fmt.Sprintf(resourceFmtString, r.Id, r.Status, r.Since.Format(time.RFC3339), r.FriendlyName)
 }
 
 // MarshalJSON will return simple a simple json structure for a resource.
