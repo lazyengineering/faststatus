@@ -141,6 +141,10 @@ func TestResourceMarshalJSON(t *testing.T) {
 	}
 }
 
+func (a Resource) Eq(b Resource) bool {
+	return a.Id == b.Id && a.FriendlyName == b.FriendlyName && a.Status == b.Status && a.Since.Equal(b.Since)
+}
+
 func TestResourceUnmarshalJSON(t *testing.T) {
 	type jsonTest struct {
 		Raw      []byte
@@ -224,7 +228,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 		actual := new(Resource)
 		if err := json.Unmarshal(st.Raw, actual); err != nil {
 			t.Error(err)
-		} else if *actual != st.Expected {
+		} else if !actual.Eq(st.Expected) {
 			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
 		}
 	}
