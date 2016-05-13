@@ -30,8 +30,8 @@ func (r Resource) String() string {
 	return fmt.Sprintf(resourceFmtString, r.Since.Format(time.RFC3339), r.Status, r.Id, r.FriendlyName)
 }
 
-// MarshalJson will return simple a simple json structure for a resource.
-func (r Resource) MarshalJson() ([]byte, error) {
+// MarshalJSON will return simple a simple json structure for a resource.
+func (r Resource) MarshalJSON() ([]byte, error) {
 	tmpResource := struct {
 		Id           string    `json:"id"`
 		FriendlyName string    `json:"friendlyName"`
@@ -40,14 +40,14 @@ func (r Resource) MarshalJson() ([]byte, error) {
 	}{
 		fmt.Sprintf("%X", r.Id),
 		r.FriendlyName,
-		r.Status.inRange(),
+		r.Status,
 		r.Since,
 	}
 	return json.Marshal(tmpResource)
 }
 
 // UnmarshalJson will populate a Resource with data from a json struct
-// according to the same format as MarshalJson
+// according to the same format as MarshalJSON
 func (r *Resource) UnmarshalJson(json []byte) error {
 	return errors.New("Not Implemented")
 }

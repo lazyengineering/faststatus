@@ -72,3 +72,38 @@ func TestStatusPretty(t *testing.T) {
 		}
 	}
 }
+
+func TestStatusMarshalJSON(t *testing.T) {
+	type jsonTest struct {
+		Expected string
+		Status   Status
+	}
+	tests := []jsonTest{
+		jsonTest{ // Zero Value
+			Expected: "0",
+		},
+		jsonTest{ // Free
+			Expected: "0",
+			Status:   Free,
+		},
+		jsonTest{ // Busy
+			Expected: "1",
+			Status:   Busy,
+		},
+		jsonTest{ // Occupied
+			Expected: "2",
+			Status:   Occupied,
+		},
+		jsonTest{ // Out of Range
+			Expected: "0",
+			Status:   Occupied + 1,
+		},
+	}
+	for _, st := range tests {
+		if actual, err := st.Status.MarshalJSON(); err != nil {
+			t.Error(err)
+		} else if string(actual) != st.Expected {
+			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", string(actual))
+		}
+	}
+}

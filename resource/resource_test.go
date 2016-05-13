@@ -73,7 +73,7 @@ func TestResourceString(t *testing.T) {
 	}
 }
 
-func TestResourceMarshalJson(t *testing.T) {
+func TestResourceMarshalJSON(t *testing.T) {
 	type jsonTest struct {
 		Expected string
 		Resource Resource
@@ -132,7 +132,7 @@ func TestResourceMarshalJson(t *testing.T) {
 		},
 	}
 	for _, st := range tests {
-		if actual, err := st.Resource.MarshalJson(); err != nil {
+		if actual, err := st.Resource.MarshalJSON(); err != nil {
 			t.Error(err)
 		} else if string(actual) != st.Expected {
 			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", string(actual))

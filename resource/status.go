@@ -4,6 +4,7 @@
 package resource
 
 import (
+	"encoding/json"
 	"strconv"
 )
 
@@ -50,4 +51,8 @@ func (s Status) inRange() Status {
 		return Free
 	}
 	return s
+}
+
+func (s Status) MarshalJSON() ([]byte, error) {
+	return json.Marshal(uint8(s.inRange()))
 }
