@@ -156,3 +156,50 @@ func TestStatusUnmarshalJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestStatusMarshalUnmarshalJSON(t *testing.T) {
+	// Expects identical status to Input
+	type testResponse struct {
+		Value Status
+		Err   error
+	}
+	type jsonTest struct {
+		Input    Status
+		Expected testResponse
+	}
+	tests := []jsonTest{
+		jsonTest{ // Zero Value
+			Expected: testResponse{Free, nil},
+		},
+		jsonTest{ // Free
+			Input:    Free,
+			Expected: testResponse{Free, nil},
+		},
+		jsonTest{ // Busy
+			Input:    Busy,
+			Expected: testResponse{Busy, nil},
+		},
+		jsonTest{ // OccupiedFree
+			Input:    Occupied,
+			Expected: testResponse{Occupied, nil},
+		},
+		jsonTest{ // Out of Range
+			Input:    Occupied + 1,
+			Expected: testResponse{Free, ErrOutOfRange},
+		},
+	}
+	for _, st := range tests {
+		actual, err := func(s Status) (Status, error) {
+			ac := new(Status)
+			tmp, erx := json.Marshal(s)
+			if erx != nil {
+				return *ac, erx
+			}
+			erx = json.Unmarshal(tmp, ac)
+			return *ac, erx
+		}(st.Input)
+		if !rootError(err, st.Expected.Err) || actual != st.Expected.Value {
+			t.Errorf("\nexpected:\t%v\t%v\n  actual:\t%v\t%v", uint8(st.Expected.Value), st.Expected.Err, uint8(actual), err)
+		}
+	}
+}
