@@ -4,6 +4,8 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/lazyengineering/faststatus/resource"
@@ -38,67 +40,251 @@ func mustHandler(h http.Handler, e error) http.Handler {
 func TestCurrentServeHTTP_GET(t *testing.T) {
 	s := httptest.NewServer(mustHandler(NewCurrent(db_file)))
 	c := &http.Client{}
-	if r, err := c.Get(s.URL + "/"); err != nil {
-		t.Error(err)
-	} else {
-		if r.StatusCode != http.StatusNotFound {
-			t.Error("Expected: StatusNotFound\tActual: ", r.StatusCode)
-		}
+
+	// test table
+	type expectation struct {
+		StatusCode int
+		Body       string
 	}
-	if r, err := c.Get(s.URL + "/1"); err != nil {
-		t.Error(err)
-	} else {
-		if r.StatusCode != http.StatusOK {
-			t.Error("Expected: StatusOK\tActual: ", r.StatusCode)
-			t.Fail()
-		}
-		body, er := ioutil.ReadAll(r.Body)
-		if er != nil {
-			t.Error(er)
-		}
-		expected := fmt.Sprintln(testResources[1].String())
-		if string(body) != expected {
-			t.Errorf("Expected: %q\tActual: %q", expected, body)
-		}
+	type input struct {
+		Path   string
+		Accept []string
 	}
-	if r, err := c.Get(s.URL + "/1/2/"); err != nil {
-		t.Error(err)
-	} else {
-		if r.StatusCode != http.StatusOK {
-			t.Error("Expected: StatusOK\tActual: ", r.StatusCode)
-		}
-		body, er := ioutil.ReadAll(r.Body)
-		if er != nil {
-			t.Error(er)
-		}
-		expected := fmt.Sprintln(testResources[1].String())
-		expected += fmt.Sprintln(testResources[2].String())
-		if string(body) != expected {
-			t.Errorf("Expected: %q\tActual: %q", expected, body)
-		}
+	type test struct {
+		I input
+		E expectation
 	}
-	if r, err := c.Get(s.URL + "/e"); err != nil {
-		t.Error(err)
-	} else {
-		if r.StatusCode != http.StatusNotFound {
-			t.Error("Expected: StatusNotFound\tActual: ", r.StatusCode)
+	jsonBody := func(rs ...resource.Resource) string {
+		b, err := json.Marshal(rs)
+		if err != nil {
+			t.Fatal(err)
 		}
+		return string(b)
 	}
-	if r, err := c.Get(s.URL + "/1/2/a"); err != nil {
-		t.Error(err)
-	} else {
-		if r.StatusCode != http.StatusOK {
-			t.Error("Expected: StatusOK\tActual: ", r.StatusCode)
+	tests := []test{
+		test{ // "/" "*/*"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1" "*/*"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintln(testResources[1].String()),
+			},
+		},
+		test{ // "/1/2/" "*/*"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n", testResources[1].String(), testResources[2].String()),
+			},
+		},
+		test{ // "/e" "*/*"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1/2/a" "*/*"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n%v\n", testResources[1].String(), testResources[2].String(), testResources[10].String()),
+			},
+		},
+		test{ // "/" "text/plain"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1" "text/plain"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintln(testResources[1].String()),
+			},
+		},
+		test{ // "/1/2/" "text/plain"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n", testResources[1].String(), testResources[2].String()),
+			},
+		},
+		test{ // "/e" "text/plain"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1/2/a" "text/plain"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n%v\n", testResources[1].String(), testResources[2].String(), testResources[10].String()),
+			},
+		},
+		test{ // "/" "application/json"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]\n",
+			},
+		},
+		test{ // "/1" "application/json"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1]) + "\n",
+			},
+		},
+		test{ // "/1/2/" "application/json"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2]) + "\n",
+			},
+		},
+		test{ // "/e" "application/json"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]" + "\n",
+			},
+		},
+		test{ // "/1/2/a" "application/json"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2], testResources[10]) + "\n",
+			},
+		},
+		test{ // "/" "text/html,application/json"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]\n",
+			},
+		},
+		test{ // "/1" "text/html,application/json"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1]) + "\n",
+			},
+		},
+		test{ // "/1/2/" "text/html,application/json"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2]) + "\n",
+			},
+		},
+		test{ // "/e" "text/html,application/json"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]" + "\n",
+			},
+		},
+		test{ // "/1/2/a" "text/html,application/json"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2], testResources[10]) + "\n",
+			},
+		},
+	}
+	for _, tst := range tests {
+		var b bytes.Buffer
+		rq, err := http.NewRequest(http.MethodGet, s.URL+tst.I.Path, &b)
+		if err != nil {
+			t.Error(err)
 		}
-		body, er := ioutil.ReadAll(r.Body)
-		if er != nil {
-			t.Error(er)
+		for _, a := range tst.I.Accept {
+			rq.Header.Add("Accept", a)
 		}
-		expected := fmt.Sprintln(testResources[1].String())
-		expected += fmt.Sprintln(testResources[2].String())
-		expected += fmt.Sprintln(testResources[10].String())
-		if string(body) != expected {
-			t.Errorf("Expected: %q\tActual: %q", expected, body)
+		if r, err := c.Do(rq); err != nil {
+			t.Error(err)
+		} else {
+			if r.StatusCode != tst.E.StatusCode {
+				t.Errorf("Expected: %v\tActual: %v\n", tst.E.StatusCode, r.StatusCode)
+			}
+			body, er := ioutil.ReadAll(r.Body)
+			if er != nil {
+				t.Error(er)
+			}
+			if string(body) != tst.E.Body {
+				t.Errorf("%v,%v\t Expected: %v\tActual: %v\n", tst.I.Path, tst.I.Accept, tst.E.Body, string(body))
+			}
 		}
 	}
 }

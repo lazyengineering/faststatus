@@ -46,7 +46,7 @@ func (s *Current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ids, err := idsFromPath(r.URL.Path)
 	if err != nil {
-		http.Error(w, "Resource Not Found", http.StatusNotFound)
+		error404(w, r)
 	}
 
 	switch r.Method {
@@ -61,6 +61,39 @@ func (s *Current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// return
+func error404(w http.ResponseWriter, r *http.Request) {
+	switch textOrJson(r.Header[http.CanonicalHeaderKey("Accept")]) {
+	case "text/plain":
+		http.Error(w, "Resource Not Found", http.StatusNotFound)
+	case "application/json":
+		http.Error(w, "[]", http.StatusNotFound)
+	}
+}
+
+func error500(w http.ResponseWriter, r *http.Request) {
+	switch textOrJson(r.Header[http.CanonicalHeaderKey("Accept")]) {
+	case "text/plain":
+		http.Error(w, "Server Error", http.StatusInternalServerError)
+	case "application/json":
+		http.Error(w, "", http.StatusInternalServerError)
+	}
+}
+
+func textOrJson(accepts []string) string {
+	for _, a := range accepts {
+		switch a {
+		case "application/json":
+			return "application/json"
+		case "text/plain":
+			fallthrough
+		case "*/*":
+			return "text/plain"
+		}
+	}
+	return "text/plain"
 }
 
 func idsFromPath(path string) ([]uint64, error) {
@@ -107,7 +140,7 @@ func encoder(accept string) func(io.Writer, []resource.Resource) error {
 // expects an empty request, returns the resource
 func (s *Current) getResource(w http.ResponseWriter, r *http.Request, ids []uint64) {
 	if len(ids) == 0 {
-		http.Error(w, "Resource Not Found", http.StatusNotFound)
+		error404(w, r)
 		return
 	}
 	rch := make(chan []byte)
@@ -135,20 +168,20 @@ func (s *Current) getResource(w http.ResponseWriter, r *http.Request, ids []uint
 		rc := new(resource.Resource)
 		err := rc.UnmarshalJSON(raw)
 		if err != nil {
-			http.Error(w, "Server Error", http.StatusInternalServerError)
+			error500(w, r)
 			return
 		}
 		resources = append(resources, *rc)
 	}
 	if len(resources) == 0 {
-		http.Error(w, "Resource Not Found", http.StatusNotFound)
+		error404(w, r)
 		return
 	}
 
 	tmp := new(bytes.Buffer)
-	err := encoder(r.Header.Get("Accept"))(tmp, resources)
+	err := encoder(textOrJson(r.Header[http.CanonicalHeaderKey("Accept")]))(tmp, resources)
 	if err != nil {
-		http.Error(w, "Server Error", http.StatusInternalServerError)
+		error500(w, r)
 		return
 	}
 	tmp.WriteTo(w)
