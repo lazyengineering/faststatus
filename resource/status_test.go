@@ -5,6 +5,7 @@ package resource
 
 import (
 	"encoding/json" // because we explicitly want to work with the standard library json package
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -125,7 +126,7 @@ func rootError(e, root error) bool {
 func TestStatusUnmarshalJSON(t *testing.T) {
 	type testResponse struct {
 		Value Status
-		Err   error
+		ErrOK func(error) bool
 	}
 	type jsonTest struct {
 		Input    []byte
@@ -133,26 +134,49 @@ func TestStatusUnmarshalJSON(t *testing.T) {
 	}
 	tests := []jsonTest{
 		jsonTest{ // Free
-			Input:    []byte("0"),
-			Expected: testResponse{Free, nil},
+			Input: []byte("0"),
+			Expected: testResponse{
+				Free,
+				func(e error) bool { return e == nil },
+			},
 		},
 		jsonTest{ // Busy
-			Input:    []byte("1"),
-			Expected: testResponse{Busy, nil},
+			Input: []byte("1"),
+			Expected: testResponse{
+				Busy,
+				func(e error) bool { return e == nil },
+			},
 		},
 		jsonTest{ // Occupied
-			Input:    []byte("2"),
-			Expected: testResponse{Occupied, nil},
+			Input: []byte("2"),
+			Expected: testResponse{
+				Occupied,
+				func(e error) bool { return e == nil },
+			},
 		},
 		jsonTest{ // Out of Range
-			Input:    []byte("3"),
-			Expected: testResponse{0, ErrOutOfRange},
+			Input: []byte("3"),
+			Expected: testResponse{
+				0,
+				func(e error) bool { return e == ErrOutOfRange },
+			},
+		},
+		jsonTest{ // Non-number
+			Input: []byte("π"),
+			Expected: testResponse{
+				0,
+				func(e error) bool { return e != nil },
+			},
 		},
 	}
 	for _, st := range tests {
-		actual := new(Status)
-		if err := json.Unmarshal(st.Input, actual); !rootError(err, st.Expected.Err) || *actual != st.Expected.Value {
-			t.Errorf("\nexpected:\t%v\t%q\n  actual:\t%v\t%q", uint8(st.Expected.Value), st.Expected.Err, uint8(*actual), err)
+		var actual Status
+		err := json.Unmarshal(st.Input, &actual)
+		if !st.Expected.ErrOK(err) {
+			t.Errorf("Status.UnmarshalJSON(%v) = %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
+		}
+		if !reflect.DeepEqual(actual, st.Expected.Value) {
+			t.Errorf("Status.UnmarshalJSON(%v), Status: %v; expected: %v", st.Input, actual, st.Expected.Value)
 		}
 	}
 }
