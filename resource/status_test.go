@@ -115,7 +115,7 @@ func TestStatusMarshalJSON(t *testing.T) {
 		jsonTest{ // Out of Range
 			Input: Occupied + 1,
 			Expected: testResponse{
-				[]byte(""),
+				[]byte(nil),
 				func(e error) bool { return !IsOutOfRange(e) },
 			},
 		},
