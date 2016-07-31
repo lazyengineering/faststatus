@@ -21,9 +21,18 @@ import (
 
 // New Server for current status
 func TestNewCurrent(t *testing.T) {
-	c, err := NewCurrent("tmp-db.db")
+	tmpfile, err := ioutil.TempFile("", "test")
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		log.Fatal(err)
+	}
+	fnm := tmpfile.Name()
+	err = tmpfile.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	c, er := NewCurrent(fnm)
+	if er != nil {
+		t.Fatalf("Unexpected error: %v", er)
 	}
 	if c == nil {
 		t.Fatal("Expected server")
@@ -38,6 +47,9 @@ func mustHandler(h http.Handler, e error) http.Handler {
 }
 
 func TestCurrentServeHTTP_GET(t *testing.T) {
+	setupTest()
+	defer teardownDb()
+
 	s := httptest.NewServer(mustHandler(NewCurrent(db_file)))
 	c := &http.Client{}
 
@@ -49,6 +61,264 @@ func TestCurrentServeHTTP_GET(t *testing.T) {
 	type input struct {
 		Path   string
 		Accept []string
+	}
+	type test struct {
+		I input
+		E expectation
+	}
+	jsonBody := func(rs ...resource.Resource) string {
+		b, err := json.Marshal(rs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	tests := []test{
+		test{ // "/" "*/*"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1" "*/*"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintln(testResources[1].String()),
+			},
+		},
+		test{ // "/1/2/" "*/*"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n", testResources[1].String(), testResources[2].String()),
+			},
+		},
+		test{ // "/e" "*/*"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1/2/a" "*/*"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "*/*"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n%v\n", testResources[1].String(), testResources[2].String(), testResources[10].String()),
+			},
+		},
+		test{ // "/" "text/plain"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1" "text/plain"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintln(testResources[1].String()),
+			},
+		},
+		test{ // "/1/2/" "text/plain"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n", testResources[1].String(), testResources[2].String()),
+			},
+		},
+		test{ // "/e" "text/plain"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "Resource Not Found\n",
+			},
+		},
+		test{ // "/1/2/a" "text/plain"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "text/plain"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       fmt.Sprintf("%v\n%v\n%v\n", testResources[1].String(), testResources[2].String(), testResources[10].String()),
+			},
+		},
+		test{ // "/" "application/json"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]\n",
+			},
+		},
+		test{ // "/1" "application/json"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1]) + "\n",
+			},
+		},
+		test{ // "/1/2/" "application/json"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2]) + "\n",
+			},
+		},
+		test{ // "/e" "application/json"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]" + "\n",
+			},
+		},
+		test{ // "/1/2/a" "application/json"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2], testResources[10]) + "\n",
+			},
+		},
+		test{ // "/" "text/html,application/json"
+			I: input{
+				Path:   "/",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]\n",
+			},
+		},
+		test{ // "/1" "text/html,application/json"
+			I: input{
+				Path:   "/1",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1]) + "\n",
+			},
+		},
+		test{ // "/1/2/" "text/html,application/json"
+			I: input{
+				Path:   "/1/2/",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2]) + "\n",
+			},
+		},
+		test{ // "/e" "text/html,application/json"
+			I: input{
+				Path:   "/e",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusNotFound,
+				Body:       "[]" + "\n",
+			},
+		},
+		test{ // "/1/2/a" "text/html,application/json"
+			I: input{
+				Path:   "/1/2/a",
+				Accept: append([]string{}, "text/html", "application/json"),
+			},
+			E: expectation{
+				StatusCode: http.StatusOK,
+				Body:       jsonBody(testResources[1], testResources[2], testResources[10]) + "\n",
+			},
+		},
+	}
+	for _, tst := range tests {
+		var b bytes.Buffer
+		rq, err := http.NewRequest(http.MethodGet, s.URL+tst.I.Path, &b)
+		if err != nil {
+			t.Error(err)
+		}
+		for _, a := range tst.I.Accept {
+			rq.Header.Add("Accept", a)
+		}
+		if r, err := c.Do(rq); err != nil {
+			t.Error(err)
+		} else {
+			if r.StatusCode != tst.E.StatusCode {
+				t.Errorf("Expected: %v\tActual: %v\n", tst.E.StatusCode, r.StatusCode)
+			}
+			body, er := ioutil.ReadAll(r.Body)
+			if er != nil {
+				t.Error(er)
+			}
+			if string(body) != tst.E.Body {
+				t.Errorf("%v,%v\t Expected: %v\tActual: %v\n", tst.I.Path, tst.I.Accept, tst.E.Body, string(body))
+			}
+		}
+	}
+}
+
+func TestCurrentServeHTTP_PUT(t *testing.T) {
+	setupTest()
+	defer teardownDb()
+
+	s := httptest.NewServer(mustHandler(NewCurrent(db_file)))
+	c := &http.Client{}
+
+	t.Fatal("Not Implemented")
+
+	// test table
+	type expectation struct {
+		StatusCode int
+		Body       string
+	}
+	type input struct {
+		Path   string
+		Accept []string
+		Body   string
 	}
 	type test struct {
 		I input
@@ -378,14 +648,10 @@ func teardownDb() {
 	os.Remove(db_file)
 }
 
-func TestMain(m *testing.M) {
+func setupTest() {
 	setupDb()
-	defer teardownDb()
-
 	setupResources()
-
 	if err := populateDb(); err != nil {
 		log.Fatal(err)
 	}
-	os.Exit(m.Run())
 }
