@@ -162,7 +162,7 @@ func TestStatusUnmarshalJSON(t *testing.T) {
 			},
 		},
 		jsonTest{ // Non-number
-			Input: []byte("π"),
+			Input: []byte(`"π"`),
 			Expected: testResponse{
 				0,
 				func(e error) bool { return e != nil },
