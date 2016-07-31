@@ -5,6 +5,7 @@ package resource
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -166,7 +167,7 @@ func (a Resource) Eq(b Resource) bool {
 func TestResourceUnmarshalJSON(t *testing.T) {
 	type testResponse struct {
 		Value Resource
-		Err   error
+		ErrOK func(error) bool
 	}
 	type jsonTest struct {
 		Input    []byte
@@ -177,7 +178,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			Input: []byte(`{}`),
 			Expected: testResponse{
 				Resource{},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Busy
@@ -197,7 +198,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Free
@@ -217,7 +218,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Occupied
@@ -237,7 +238,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Out of Range
@@ -249,14 +250,30 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			}`),
 			Expected: testResponse{
 				Resource{},
-				ErrOutOfRange,
+				func(e error) bool { return e == ErrOutOfRange },
+			},
+		},
+		jsonTest{ // Status Overflow
+			Input: []byte(`{
+				"id":"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+				"friendlyName":"Third One",
+				"status":2,
+				"since":"2016-05-12T16:28:00-07:00"
+			}`),
+			Expected: testResponse{
+				Resource{},
+				func(e error) bool { return e != nil },
 			},
 		},
 	}
 	for _, st := range tests {
-		actual := new(Resource)
-		if err := json.Unmarshal(st.Input, actual); !rootError(err, st.Expected.Err) || !actual.Eq(st.Expected.Value) {
-			t.Errorf("\nexpected:\t%v\t%v\n  actual:\t%v\t%v", st.Expected.Value, st.Expected.Err, *actual, err)
+		var actual Resource
+		err := json.Unmarshal(st.Input, &actual)
+		if !st.Expected.ErrOK(err) {
+			t.Errorf("Resource.UnmarshalJSON(%v) = %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
+		}
+		if !reflect.DeepEqual(actual, st.Expected.Value) {
+			t.Errorf("Resource.UnmarshalJSON(%v), Resource: %v; expected: %v", st.Input, actual, st.Expected.Value)
 		}
 	}
 }

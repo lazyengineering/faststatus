@@ -62,9 +62,7 @@ func (r *Resource) UnmarshalJSON(raw []byte) error {
 	if err := json.Unmarshal(raw, tmp); err != nil {
 		return err
 	}
-	r.FriendlyName = tmp.FriendlyName
-	r.Status = tmp.Status
-	r.Since = tmp.Since
+
 	if len(tmp.Id) == 0 {
 		tmp.Id = "0"
 	}
@@ -73,5 +71,9 @@ func (r *Resource) UnmarshalJSON(raw []byte) error {
 	} else {
 		r.Id = id
 	}
+
+	r.FriendlyName = tmp.FriendlyName
+	r.Status = tmp.Status
+	r.Since = tmp.Since
 	return nil
 }
