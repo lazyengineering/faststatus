@@ -5,6 +5,7 @@ package resource
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -78,7 +79,7 @@ func TestResourceString(t *testing.T) {
 func TestResourceMarshalJSON(t *testing.T) {
 	type testResponse struct {
 		Value []byte
-		Err   error
+		ErrOK func(error) bool
 	}
 	type jsonTest struct {
 		Input    Resource
@@ -88,7 +89,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 		jsonTest{ // Zero Value
 			Expected: testResponse{
 				[]byte(`{"id":"0","friendlyName":"","status":0,"since":"0001-01-01T00:00:00Z"}`),
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Busy
@@ -103,7 +104,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 			},
 			Expected: testResponse{
 				[]byte(`{"id":"1","friendlyName":"First One","status":1,"since":"2016-05-12T16:25:00-07:00"}`),
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Free
@@ -118,7 +119,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 			},
 			Expected: testResponse{
 				[]byte(`{"id":"F","friendlyName":"Second One","status":0,"since":"2016-05-12T16:27:00-07:00"}`),
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Occupied
@@ -133,7 +134,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 			},
 			Expected: testResponse{
 				[]byte(`{"id":"AF","friendlyName":"Third One","status":2,"since":"2016-05-12T16:28:00-07:00"}`),
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Out of Range
@@ -148,25 +149,25 @@ func TestResourceMarshalJSON(t *testing.T) {
 			},
 			Expected: testResponse{
 				nil,
-				ErrOutOfRange,
+				func(e error) bool { return !IsOutOfRange(e) },
 			},
 		},
 	}
 	for _, st := range tests {
-		if actual, err := json.Marshal(st.Input); !rootError(err, st.Expected.Err) || string(actual) != string(st.Expected.Value) {
-			t.Errorf("\nexpected:\t%q\t%q\n  actual:\t%q\t%q", string(st.Expected.Value), st.Expected.Err, string(actual), err)
+		actual, err := json.Marshal(st.Input)
+		if !st.Expected.ErrOK(err) {
+			t.Errorf("Resource.MarshalJSON(%v) = '...', %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
+		}
+		if !reflect.DeepEqual(actual, st.Expected.Value) {
+			t.Errorf("Resource.MarshalJSON(%v) = %v, error; expected: %v", st.Input, actual, st.Expected.Value)
 		}
 	}
-}
-
-func (a Resource) Eq(b Resource) bool {
-	return a.Id == b.Id && a.FriendlyName == b.FriendlyName && a.Status == b.Status && a.Since.Equal(b.Since)
 }
 
 func TestResourceUnmarshalJSON(t *testing.T) {
 	type testResponse struct {
 		Value Resource
-		Err   error
+		ErrOK func(error) bool
 	}
 	type jsonTest struct {
 		Input    []byte
@@ -177,7 +178,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			Input: []byte(`{}`),
 			Expected: testResponse{
 				Resource{},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Busy
@@ -197,7 +198,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Free
@@ -217,7 +218,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Occupied
@@ -237,7 +238,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Out of Range
@@ -249,14 +250,30 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			}`),
 			Expected: testResponse{
 				Resource{},
-				ErrOutOfRange,
+				func(e error) bool { return IsOutOfRange(e) },
+			},
+		},
+		jsonTest{ // Status Overflow
+			Input: []byte(`{
+				"id":"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+				"friendlyName":"Third One",
+				"status":2,
+				"since":"2016-05-12T16:28:00-07:00"
+			}`),
+			Expected: testResponse{
+				Resource{},
+				func(e error) bool { return e != nil },
 			},
 		},
 	}
 	for _, st := range tests {
-		actual := new(Resource)
-		if err := json.Unmarshal(st.Input, actual); !rootError(err, st.Expected.Err) || !actual.Eq(st.Expected.Value) {
-			t.Errorf("\nexpected:\t%v\t%v\n  actual:\t%v\t%v", st.Expected.Value, st.Expected.Err, *actual, err)
+		var actual Resource
+		err := json.Unmarshal(st.Input, &actual)
+		if !st.Expected.ErrOK(err) {
+			t.Errorf("Resource.UnmarshalJSON(%v) = %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
+		}
+		if !reflect.DeepEqual(actual, st.Expected.Value) {
+			t.Errorf("Resource.UnmarshalJSON(%v), Resource: %v; expected: %v", st.Input, actual, st.Expected.Value)
 		}
 	}
 }
@@ -264,7 +281,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 	type testResponse struct {
 		Value Resource
-		Err   error
+		ErrOK func(error) bool
 	}
 	type jsonTest struct {
 		Input    Resource
@@ -275,7 +292,7 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 			Input: Resource{},
 			Expected: testResponse{
 				Resource{},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Busy
@@ -298,7 +315,7 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Free
@@ -321,7 +338,7 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				func(e error) bool { return e == nil },
 			},
 		},
 		jsonTest{ // Valid Occupied
@@ -344,7 +361,8 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 						return tt
 					}(),
 				},
-				nil,
+				// func(e error) bool { return e == nil },
+				func(e error) bool { return !IsOutOfRange(e) },
 			},
 		},
 		jsonTest{ // Out of Range
@@ -359,7 +377,7 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 			},
 			Expected: testResponse{
 				Resource{},
-				ErrOutOfRange,
+				func(e error) bool { return !IsOutOfRange(e) },
 			},
 		},
 	}
@@ -373,8 +391,11 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 			erx = json.Unmarshal(tmp, ac)
 			return *ac, erx
 		}(st.Input)
-		if !rootError(err, st.Expected.Err) || !actual.Eq(st.Expected.Value) {
-			t.Errorf("\nexpected:\t%v\t%v\n  actual:\t%v\t%v", st.Expected.Value, st.Expected.Err, actual, err)
+		if !st.Expected.ErrOK(err) {
+			t.Errorf("Resource.UnmarshalJSON(%v) = %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
+		}
+		if !reflect.DeepEqual(actual, st.Expected.Value) {
+			t.Errorf("Resource.UnmarshalJSON(%v), Resource: %#v; expected: %#v", st.Input, actual, st.Expected.Value)
 		}
 	}
 }

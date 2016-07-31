@@ -6,6 +6,7 @@ package resource
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 )
 
@@ -46,8 +47,6 @@ func (s Status) Pretty() string {
 	}
 }
 
-var ErrOutOfRange = errors.New("Status not in valid range")
-
 func (s Status) inRange() bool {
 	return s <= Occupied
 }
@@ -61,18 +60,18 @@ func (s Status) forceRange() Status {
 }
 
 // MarshalJSON will return a numeric value in the valid range of Status values.
-// Will return `ErrOutOfRange` for a status that is higher than the defined
-// status values.
+// A status that is higher than the defined status values will return an error
+// which can be checked using the `IsOutOfRange(error)` function.
 func (s Status) MarshalJSON() ([]byte, error) {
 	if !s.inRange() {
-		return nil, ErrOutOfRange
+		return nil, errOutOfRange
 	}
 	return json.Marshal(uint8(s))
 }
 
 // UnmarshalJSON will assign a valid Status value from a numeric value.
-// Will return `ErrOutOfRange` for a status that is higher than the defined
-// status values.
+// A status that is higher than the defined status values will return an error
+// which can be checked using the `IsOutOfRange(error)` function.
 func (s *Status) UnmarshalJSON(raw []byte) error {
 	t := new(uint8)
 	if err := json.Unmarshal(raw, t); err != nil {
@@ -81,7 +80,35 @@ func (s *Status) UnmarshalJSON(raw []byte) error {
 	*s = Status(*t)
 	if !s.inRange() {
 		*s = Free // set to zero value by default
-		return ErrOutOfRange
+		return errOutOfRange
 	}
 	return nil
+}
+
+type statusError struct {
+	err          error
+	isOutOfRange bool
+}
+
+type outOfRanger interface {
+	OutOfRange() bool
+}
+
+func (e *statusError) Error() string {
+	return fmt.Sprintf("status error: %+v", e.err)
+}
+
+func (e *statusError) OutOfRange() bool {
+	return e.isOutOfRange
+}
+
+// IsOutOfRange returns true for an error indicating that the `Status` is out of range
+func IsOutOfRange(e error) bool {
+	or, ok := e.(outOfRanger)
+	return ok && or.OutOfRange()
+}
+
+var errOutOfRange = &statusError{
+	errors.New("Status not in valid range"),
+	true,
 }
