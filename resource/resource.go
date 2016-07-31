@@ -75,5 +75,8 @@ func (r *Resource) UnmarshalJSON(raw []byte) error {
 	r.FriendlyName = tmp.FriendlyName
 	r.Status = tmp.Status
 	r.Since = tmp.Since
+	if r.Since.IsZero() {
+		r.Since = time.Time{}
+	}
 	return nil
 }
