@@ -12,15 +12,18 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/lazyengineering/faststatus/resource"
 )
 
 // Current encapsulates the api endpoint for managing current resource status
 type Current struct {
-	db *bolt.DB
+	store store
+}
+
+type store interface {
+	save(resource.Resource) error
+	get(...uint64) ([]resource.Resource, error)
 }
 
 func NewCurrent(dbPath string) (*Current, error) {
@@ -33,11 +36,11 @@ func NewCurrent(dbPath string) (*Current, error) {
 }
 
 func (s *Current) init(dbPath string) error {
-	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	st, err := newStore(dbPath)
 	if err != nil {
-		return fmt.Errorf("Error initializing database, %q: %v", dbPath, err)
+		return fmt.Errorf("initializing store, %q: %+v", dbPath, err)
 	}
-	s.db = db
+	s.store = st
 	return nil
 }
 
@@ -61,6 +64,34 @@ func (s *Current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// expects an empty request, returns the resource
+func (s *Current) getResource(w http.ResponseWriter, r *http.Request, ids []uint64) {
+	resources, err := s.store.get(ids...)
+	if len(resources) == 0 {
+		error404(w, r)
+		return
+	}
+
+	tmp := new(bytes.Buffer)
+	err = encoder(textOrJson(r.Header[http.CanonicalHeaderKey("Accept")]))(tmp, resources)
+	if err != nil {
+		error500(w, r)
+		return
+	}
+	tmp.WriteTo(w)
+}
+
+// expects a valid resource, returns the new/updated resource. ID in body must match the ID in the URL
+func (s *Current) putResource(w http.ResponseWriter, r *http.Request) {
+}
+
+//
+func (s *Current) deleteResource(w http.ResponseWriter, r *http.Request) {
+}
+
+func (s *Current) postResource(w http.ResponseWriter, r *http.Request) {
 }
 
 // return
@@ -135,65 +166,4 @@ func encoder(accept string) func(io.Writer, []resource.Resource) error {
 	default:
 		return encode_text
 	}
-}
-
-// expects an empty request, returns the resource
-func (s *Current) getResource(w http.ResponseWriter, r *http.Request, ids []uint64) {
-	if len(ids) == 0 {
-		error404(w, r)
-		return
-	}
-	rch := make(chan []byte)
-	done := make(chan struct{})
-	defer close(done)
-	go s.db.View(func(tx *bolt.Tx) error {
-		defer close(rch)
-		b := tx.Bucket([]byte("resources"))
-		for _, id := range ids {
-			raw := b.Get([]byte(strconv.FormatUint(id, 16)))
-			select {
-			case rch <- raw:
-			case <-done:
-				return nil
-			}
-		}
-		return nil
-	})
-
-	resources := []resource.Resource{}
-	for raw := range rch {
-		if raw == nil {
-			continue
-		}
-		rc := new(resource.Resource)
-		err := rc.UnmarshalJSON(raw)
-		if err != nil {
-			error500(w, r)
-			return
-		}
-		resources = append(resources, *rc)
-	}
-	if len(resources) == 0 {
-		error404(w, r)
-		return
-	}
-
-	tmp := new(bytes.Buffer)
-	err := encoder(textOrJson(r.Header[http.CanonicalHeaderKey("Accept")]))(tmp, resources)
-	if err != nil {
-		error500(w, r)
-		return
-	}
-	tmp.WriteTo(w)
-}
-
-// expects a valid resource, returns the new/updated resource. ID in body must match the ID in the URL
-func (s *Current) putResource(w http.ResponseWriter, r *http.Request) {
-}
-
-//
-func (s *Current) deleteResource(w http.ResponseWriter, r *http.Request) {
-}
-
-func (s *Current) postResource(w http.ResponseWriter, r *http.Request) {
 }
