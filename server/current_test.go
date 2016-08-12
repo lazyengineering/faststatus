@@ -20,7 +20,7 @@ import (
 )
 
 // New Server for current status
-func TestNewCurrent(t *testing.T) {
+func TestCurrent(t *testing.T) {
 	tmpfile, err := ioutil.TempFile("", "test")
 	if err != nil {
 		log.Fatal(err)
@@ -30,7 +30,7 @@ func TestNewCurrent(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	c, er := NewCurrent(fnm)
+	c, er := Current(fnm)
 	if er != nil {
 		t.Fatalf("Unexpected error: %v", er)
 	}
@@ -50,7 +50,7 @@ func TestCurrentServeHTTP_GET(t *testing.T) {
 	setupTest()
 	defer teardownDb()
 
-	s := httptest.NewServer(mustHandler(NewCurrent(db_file)))
+	s := httptest.NewServer(mustHandler(Current(db_file)))
 	c := &http.Client{}
 
 	// test table
@@ -306,7 +306,7 @@ func testCurrentServeHTTP_PUT(t *testing.T) {
 	setupTest()
 	defer teardownDb()
 
-	s := httptest.NewServer(mustHandler(NewCurrent(db_file)))
+	s := httptest.NewServer(mustHandler(Current(db_file)))
 	c := &http.Client{}
 
 	t.Fatal("Not Implemented")

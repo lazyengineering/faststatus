@@ -16,8 +16,8 @@ import (
 	"github.com/lazyengineering/faststatus/resource"
 )
 
-// Current encapsulates the api endpoint for managing current resource status
-type Current struct {
+// current encapsulates the api endpoint for managing current resource status
+type current struct {
 	store store
 }
 
@@ -26,16 +26,22 @@ type store interface {
 	get(...uint64) ([]resource.Resource, error)
 }
 
-func NewCurrent(dbPath string) (*Current, error) {
-	s := new(Current)
+// Current returns a handler that operates as a RESTful endpoint for
+// Resources.
+//
+// This handler parses the URL for Resource IDs `/{id1}/{id2}/{id3}/` for
+// GET requests, returning resources according to the "Accept" request
+// header.
+func Current(dbPath string) (http.Handler, error) {
+	s := new(current)
 	err := s.init(dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating new Current: %v", err)
+		return nil, fmt.Errorf("creating new current: %v", err)
 	}
 	return s, nil
 }
 
-func (s *Current) init(dbPath string) error {
+func (s *current) init(dbPath string) error {
 	st, err := newStore(dbPath)
 	if err != nil {
 		return fmt.Errorf("initializing store, %q: %+v", dbPath, err)
@@ -44,7 +50,7 @@ func (s *Current) init(dbPath string) error {
 	return nil
 }
 
-func (s *Current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// first, separate by path, then method
 
 	ids, err := idsFromPath(r.URL.Path)
@@ -67,7 +73,7 @@ func (s *Current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // expects an empty request, returns the resource
-func (s *Current) getResource(w http.ResponseWriter, r *http.Request, ids []uint64) {
+func (s *current) getResource(w http.ResponseWriter, r *http.Request, ids []uint64) {
 	resources, err := s.store.get(ids...)
 	if len(resources) == 0 {
 		error404(w, r)
@@ -84,14 +90,14 @@ func (s *Current) getResource(w http.ResponseWriter, r *http.Request, ids []uint
 }
 
 // expects a valid resource, returns the new/updated resource. ID in body must match the ID in the URL
-func (s *Current) putResource(w http.ResponseWriter, r *http.Request) {
+func (s *current) putResource(w http.ResponseWriter, r *http.Request) {
 }
 
 //
-func (s *Current) deleteResource(w http.ResponseWriter, r *http.Request) {
+func (s *current) deleteResource(w http.ResponseWriter, r *http.Request) {
 }
 
-func (s *Current) postResource(w http.ResponseWriter, r *http.Request) {
+func (s *current) postResource(w http.ResponseWriter, r *http.Request) {
 }
 
 // return
