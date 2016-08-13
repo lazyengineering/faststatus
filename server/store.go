@@ -16,12 +16,16 @@ type boltStore struct {
 	db *bolt.DB
 }
 
-func newStore(dbPath string) (store, error) {
-	s := new(boltStore)
-	if err := s.init(dbPath); err != nil {
-		return nil, fmt.Errorf("creating new store: %+v", err)
+// BoltStore initializes a storage engine for the current server built on boltdb persistance. Use as an option when calling `Current()`.
+func BoltStore(dbFile string) func(*current) error {
+	return func(c *current) error {
+		s := new(boltStore)
+		if err := s.init(dbFile); err != nil {
+			return fmt.Errorf("creating new store: %+v", err)
+		}
+		c.store = s
+		return nil
 	}
-	return s, nil
 }
 
 func (s *boltStore) init(dbPath string) error {

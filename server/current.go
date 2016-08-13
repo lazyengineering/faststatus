@@ -32,22 +32,15 @@ type store interface {
 // This handler parses the URL for Resource IDs `/{id1}/{id2}/{id3}/` for
 // GET requests, returning resources according to the "Accept" request
 // header.
-func Current(dbPath string) (http.Handler, error) {
+func Current(options ...func(*current) error) (http.Handler, error) {
 	s := new(current)
-	err := s.init(dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("creating new current: %v", err)
+	for _, option := range options {
+		if err := option(s); err != nil {
+			return nil, fmt.Errorf("creating new current: %+v", err)
+		}
 	}
+	//TODO(jesse@jessecarl.com): make a useful default store option. Simple mutex and map?
 	return s, nil
-}
-
-func (s *current) init(dbPath string) error {
-	st, err := newStore(dbPath)
-	if err != nil {
-		return fmt.Errorf("initializing store, %q: %+v", dbPath, err)
-	}
-	s.store = st
-	return nil
 }
 
 func (s *current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
