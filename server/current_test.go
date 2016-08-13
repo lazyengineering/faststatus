@@ -169,6 +169,17 @@ func TestCurrentServeHTTP_GET(t *testing.T) {
 		return string(b)
 	}
 	tests := []test{
+		test{ // "bad request"
+			input{
+				path:   "/ghi",
+				accept: append([]string{}, "*/*"),
+				store:  &mockFailureStore{t: t},
+			},
+			expectation{
+				statusCode: http.StatusBadRequest,
+				body:       "Bad Request\n",
+			},
+		},
 		test{ // "/" "*/*"
 			input{
 				path:   "/",

@@ -48,7 +48,8 @@ func (s *current) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ids, err := idsFromPath(r.URL.Path)
 	if err != nil {
-		error404(w, r)
+		error400(w, r)
+		return
 	}
 
 	switch r.Method {
@@ -86,14 +87,21 @@ func (s *current) getResource(w http.ResponseWriter, r *http.Request, ids []uint
 func (s *current) putResource(w http.ResponseWriter, r *http.Request) {
 }
 
-//
 func (s *current) deleteResource(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *current) postResource(w http.ResponseWriter, r *http.Request) {
 }
 
-// return
+func error400(w http.ResponseWriter, r *http.Request) {
+	switch textOrJson(r.Header[http.CanonicalHeaderKey("Accept")]) {
+	case "text/plain":
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+	case "application/json":
+		http.Error(w, "[]", http.StatusBadRequest)
+	}
+}
+
 func error404(w http.ResponseWriter, r *http.Request) {
 	switch textOrJson(r.Header[http.CanonicalHeaderKey("Accept")]) {
 	case "text/plain":
