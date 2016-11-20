@@ -29,7 +29,7 @@ func TestNewIDIsUUID(t *testing.T) {
 	}
 }
 
-func TestMarshalBinary(t *testing.T) {
+func TestIDMarshalBinary(t *testing.T) {
 	is16Bytes := func(id resource.ID) bool {
 		b, err := id.MarshalBinary()
 		return err == nil && len(b) == 16
@@ -39,7 +39,7 @@ func TestMarshalBinary(t *testing.T) {
 	}
 }
 
-func TestUnmarshalBinary(t *testing.T) {
+func TestIDUnmarshalBinary(t *testing.T) {
 	f := func(b []byte) bool {
 		id := new(resource.ID)
 		err := id.UnmarshalBinary(b)
@@ -50,7 +50,7 @@ func TestUnmarshalBinary(t *testing.T) {
 	}
 }
 
-func TestMarshalUnmarshalBinary(t *testing.T) {
+func TestIDMarshalUnmarshalBinary(t *testing.T) {
 	f := func(id resource.ID) bool {
 		b, err := id.MarshalBinary()
 		if err != nil {
@@ -68,7 +68,7 @@ func TestMarshalUnmarshalBinary(t *testing.T) {
 	}
 }
 
-func TestUnmarshalMarshalBinary(t *testing.T) {
+func TestIDUnmarshalMarshalBinary(t *testing.T) {
 	f := func(ba [16]byte) bool {
 		id := new(resource.ID)
 		err := id.UnmarshalBinary(ba[:])
@@ -86,7 +86,7 @@ func TestUnmarshalMarshalBinary(t *testing.T) {
 	}
 }
 
-func TestMarshalTextIs36Bytes(t *testing.T) {
+func TestIDMarshalTextIs36Bytes(t *testing.T) {
 	// is 36 bytes
 	is36bytes := func(id resource.ID) bool {
 		s, err := id.MarshalText()
@@ -97,7 +97,7 @@ func TestMarshalTextIs36Bytes(t *testing.T) {
 	}
 }
 
-func TestMarshalTextIsValidChars(t *testing.T) {
+func TestIDMarshalTextIsValidChars(t *testing.T) {
 	// contains only lowercase hex and dashes
 	onlyHexAndDashes := func(id resource.ID) bool {
 		s, err := id.MarshalText()
@@ -118,7 +118,7 @@ func TestMarshalTextIsValidChars(t *testing.T) {
 	}
 }
 
-func TestMarshalTextHasCorrectDashes(t *testing.T) {
+func TestIDMarshalTextHasCorrectDashes(t *testing.T) {
 	// contains dashes where expected
 	dashesWhereExpected := func(id resource.ID) bool {
 		s, err := id.MarshalText()
@@ -137,7 +137,7 @@ func TestMarshalTextHasCorrectDashes(t *testing.T) {
 	}
 }
 
-func TestUnmarshalText(t *testing.T) {
+func TestIDUnmarshalText(t *testing.T) {
 	testCases := []struct {
 		name      string
 		txt       []byte
@@ -231,7 +231,7 @@ func TestUnmarshalText(t *testing.T) {
 	}
 }
 
-func TestMarshalUnmarshalText(t *testing.T) {
+func TestIDMarshalUnmarshalText(t *testing.T) {
 	f := func(id resource.ID) bool {
 		b, err := id.MarshalText()
 		if err != nil {
