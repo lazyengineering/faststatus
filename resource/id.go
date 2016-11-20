@@ -55,6 +55,10 @@ func (id ID) MarshalText() ([]byte, error) {
 	return txt, nil
 }
 
+// UnmarshalText populates the id with a uuid value represented by the text in
+// the canonical form: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx. While any of the
+// dashes in the form may be left out, any non-hexadecimal characters will result
+// in an error.
 func (id *ID) UnmarshalText(txt []byte) error {
 	if len(txt) < 32 {
 		return fmt.Errorf("UUID text must be longer than 32 characters")
@@ -62,38 +66,19 @@ func (id *ID) UnmarshalText(txt []byte) error {
 
 	buf := make([]byte, 16)
 
-	if _, err := hex.Decode(buf[0:4], txt[0:8]); err != nil {
-		return fmt.Errorf("decoding hex into uuid: %+v", err)
+	var i int
+	for _, n := range []int{8, 4, 4, 4, 12} {
+		if txt[0] == '-' {
+			txt = txt[1:]
+		}
+		if _, err := hex.Decode(buf[i:i+(n/2)], txt[0:n]); err != nil {
+			return fmt.Errorf("decoding hex into uuid: %+v", err)
+		}
+		txt = txt[n:]
+		i = i + (n / 2)
 	}
-	txt = txt[8:]
-	if txt[0] == '-' {
-		txt = txt[1:]
-	}
-	if _, err := hex.Decode(buf[4:6], txt[0:4]); err != nil {
-		return fmt.Errorf("decoding hex into uuid: %+v", err)
-	}
-	txt = txt[4:]
-	if txt[0] == '-' {
-		txt = txt[1:]
-	}
-	if _, err := hex.Decode(buf[6:8], txt[0:4]); err != nil {
-		return fmt.Errorf("decoding hex into uuid: %+v", err)
-	}
-	txt = txt[4:]
-	if txt[0] == '-' {
-		txt = txt[1:]
-	}
-	if _, err := hex.Decode(buf[8:10], txt[0:4]); err != nil {
-		return fmt.Errorf("decoding hex into uuid: %+v", err)
-	}
-	txt = txt[4:]
-	if txt[0] == '-' {
-		txt = txt[1:]
-	}
-	if n, err := hex.Decode(buf[10:], txt[0:]); err != nil {
-		return fmt.Errorf("decoding hex into uuid: %+v", err)
-	} else if n != 6 {
-		return fmt.Errorf("decoding hex into uuid: not enough bytes")
+	if len(txt) > 0 {
+		return fmt.Errorf("too long for uuid: %+v", txt)
 	}
 
 	return id.UnmarshalBinary(buf)
