@@ -7,7 +7,56 @@ import (
 	"encoding/json" // because we explicitly want to work with the standard library json package
 	"reflect"
 	"testing"
+	"testing/quick"
 )
+
+func TestStatusMarshalBinary(t *testing.T) {
+	isOneByteWithNoError := func(s Status) bool {
+		b, err := s.MarshalBinary()
+		return err == nil && len(b) == 1
+	}
+	if err := quick.Check(isOneByteWithNoError, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestStatusUnmarshalBinary(t *testing.T) {
+	f := func(b []byte) bool {
+		s := new(Status)
+		err := s.UnmarshalBinary(b)
+		if len(b) == 1 {
+			return (err != nil) == (b[0] > byte(Occupied))
+		}
+		return err != nil
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestStatusMarshalUnmarshalBinary(t *testing.T) {
+	f := func(s Status) bool {
+		if s > Occupied {
+			return true
+		}
+		b, err := s.MarshalBinary()
+		if err != nil {
+			t.Logf("marshaling binary from status: %+v", err)
+			return false
+		}
+		gotStatus := new(Status)
+		err = gotStatus.UnmarshalBinary(b)
+		if err != nil {
+			t.Logf("unmarshaling binary from status: %+v", err)
+			return false
+		}
+		t.Logf("got %+v, expected %+v, in between %+v", *gotStatus, s, b)
+		return reflect.DeepEqual(*gotStatus, s)
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
 
 func TestStatusString(t *testing.T) {
 	type stringTest struct {

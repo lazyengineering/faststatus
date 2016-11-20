@@ -23,6 +23,24 @@ const (
 	Occupied               // resource completely busy
 )
 
+// MarshalBinary encodes a Status to a single byte in a slice
+func (s Status) MarshalBinary() ([]byte, error) {
+	return append([]byte{}, byte(s)), nil
+}
+
+// UnmarshalBinary decodes a Status from a single byte
+func (s *Status) UnmarshalBinary(b []byte) error {
+	if len(b) != 1 {
+		return fmt.Errorf("status must be one byte")
+	}
+	tmp := Status(b[0])
+	if tmp > Occupied {
+		return fmt.Errorf("status out of range")
+	}
+	*s = tmp
+	return nil
+}
+
 // For the purposes of the API, it is much cleaner to keep the
 // string representation to "0,1,2" instead of the pretty text.
 // Use Pretty instead for those representations. Out of range
