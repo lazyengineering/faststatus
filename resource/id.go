@@ -54,3 +54,47 @@ func (id ID) MarshalText() ([]byte, error) {
 
 	return txt, nil
 }
+
+func (id *ID) UnmarshalText(txt []byte) error {
+	if len(txt) < 32 {
+		return fmt.Errorf("UUID text must be longer than 32 characters")
+	}
+
+	buf := make([]byte, 16)
+
+	if _, err := hex.Decode(buf[0:4], txt[0:8]); err != nil {
+		return fmt.Errorf("decoding hex into uuid: %+v", err)
+	}
+	txt = txt[8:]
+	if txt[0] == '-' {
+		txt = txt[1:]
+	}
+	if _, err := hex.Decode(buf[4:6], txt[0:4]); err != nil {
+		return fmt.Errorf("decoding hex into uuid: %+v", err)
+	}
+	txt = txt[4:]
+	if txt[0] == '-' {
+		txt = txt[1:]
+	}
+	if _, err := hex.Decode(buf[6:8], txt[0:4]); err != nil {
+		return fmt.Errorf("decoding hex into uuid: %+v", err)
+	}
+	txt = txt[4:]
+	if txt[0] == '-' {
+		txt = txt[1:]
+	}
+	if _, err := hex.Decode(buf[8:10], txt[0:4]); err != nil {
+		return fmt.Errorf("decoding hex into uuid: %+v", err)
+	}
+	txt = txt[4:]
+	if txt[0] == '-' {
+		txt = txt[1:]
+	}
+	if n, err := hex.Decode(buf[10:], txt[0:]); err != nil {
+		return fmt.Errorf("decoding hex into uuid: %+v", err)
+	} else if n != 6 {
+		return fmt.Errorf("decoding hex into uuid: not enough bytes")
+	}
+
+	return id.UnmarshalBinary(buf)
+}
