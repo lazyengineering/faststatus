@@ -4,6 +4,7 @@
 package resource
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"testing"
@@ -18,10 +19,10 @@ func TestResourceString(t *testing.T) {
 	}
 	tests := []stringTest{
 		stringTest{ // Zero Value
-			Expected: "0000000000000000 0 0001-01-01T00:00:00Z ",
+			Expected: "0000000000000000 free 0001-01-01T00:00:00Z ",
 		},
 		stringTest{ // Valid Busy
-			Expected: "0000000000000001 1 2016-05-12T15:09:00-07:00 First One",
+			Expected: "0000000000000001 busy 2016-05-12T15:09:00-07:00 First One",
 			Resource: Resource{
 				Id:           1,
 				FriendlyName: "First One",
@@ -33,7 +34,7 @@ func TestResourceString(t *testing.T) {
 			},
 		},
 		stringTest{ // Valid Free
-			Expected: "000000000000000F 0 2016-05-12T15:39:00-07:00 Second One",
+			Expected: "000000000000000f free 2016-05-12T15:39:00-07:00 Second One",
 			Resource: Resource{
 				Id:           15,
 				FriendlyName: "Second One",
@@ -45,7 +46,7 @@ func TestResourceString(t *testing.T) {
 			},
 		},
 		stringTest{ // Valid Occupied
-			Expected: "00000000000000AF 2 2016-05-12T15:40:00-07:00 Third One",
+			Expected: "00000000000000af occupied 2016-05-12T15:40:00-07:00 Third One",
 			Resource: Resource{
 				Id:           175,
 				FriendlyName: "Third One",
@@ -57,7 +58,7 @@ func TestResourceString(t *testing.T) {
 			},
 		},
 		stringTest{ // Out of Range
-			Expected: "0000000000000DAF 0 2016-05-12T15:43:00-07:00 Another One",
+			Expected: "",
 			Resource: Resource{
 				Id:           3503,
 				FriendlyName: "Another One",
@@ -76,6 +77,85 @@ func TestResourceString(t *testing.T) {
 	}
 }
 
+func TestResourceMarshalText(t *testing.T) {
+	tests := []struct {
+		name      string
+		resource  Resource
+		wantBytes []byte
+		wantError bool
+	}{
+		{"Zero Value",
+			Resource{},
+			[]byte("0000000000000000 free 0001-01-01T00:00:00Z "),
+			false,
+		},
+		{"Valid Busy",
+			Resource{
+				Id:           1,
+				FriendlyName: "First One",
+				Status:       Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
+					return tt
+				}(),
+			},
+			[]byte("0000000000000001 busy 2016-05-12T15:09:00-07:00 First One"),
+			false,
+		},
+		{"Valid Free",
+			Resource{
+				Id:           15,
+				FriendlyName: "Second One",
+				Status:       Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:39:00-07:00")
+					return tt
+				}(),
+			},
+			[]byte("000000000000000f free 2016-05-12T15:39:00-07:00 Second One"),
+			false,
+		},
+		{"Valid Occupied",
+			Resource{
+				Id:           175,
+				FriendlyName: "Third One",
+				Status:       Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:40:00-07:00")
+					return tt
+				}(),
+			},
+			[]byte("00000000000000af occupied 2016-05-12T15:40:00-07:00 Third One"),
+			false,
+		},
+		{"Out of Range",
+			Resource{
+				Id:           3503,
+				FriendlyName: "Another One",
+				Status:       Occupied + 1,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:43:00-07:00")
+					return tt
+				}(),
+			},
+			[]byte(""),
+			true,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			txt, err := tc.resource.MarshalText()
+			if (err != nil) != tc.wantError {
+				t.Fatalf("%+v.MarshalText() = []byte, %+v, expected error? %+v", tc.resource, err, tc.wantError)
+			}
+			if !bytes.Equal(txt, tc.wantBytes) {
+				t.Fatalf("%+v.MarshalText() = %q, error, expected %q", tc.resource, txt, tc.wantBytes)
+			}
+		})
+	}
+}
+
 func TestResourceMarshalJSON(t *testing.T) {
 	type testResponse struct {
 		Value []byte
@@ -88,7 +168,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 	tests := []jsonTest{
 		jsonTest{ // Zero Value
 			Expected: testResponse{
-				[]byte(`{"id":"0","friendlyName":"","status":0,"since":"0001-01-01T00:00:00Z"}`),
+				[]byte(`{"id":"0","friendlyName":"","status":"free","since":"0001-01-01T00:00:00Z"}`),
 				func(e error) bool { return e == nil },
 			},
 		},
@@ -103,7 +183,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 				}(),
 			},
 			Expected: testResponse{
-				[]byte(`{"id":"1","friendlyName":"First One","status":1,"since":"2016-05-12T16:25:00-07:00"}`),
+				[]byte(`{"id":"1","friendlyName":"First One","status":"busy","since":"2016-05-12T16:25:00-07:00"}`),
 				func(e error) bool { return e == nil },
 			},
 		},
@@ -118,7 +198,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 				}(),
 			},
 			Expected: testResponse{
-				[]byte(`{"id":"F","friendlyName":"Second One","status":0,"since":"2016-05-12T16:27:00-07:00"}`),
+				[]byte(`{"id":"F","friendlyName":"Second One","status":"free","since":"2016-05-12T16:27:00-07:00"}`),
 				func(e error) bool { return e == nil },
 			},
 		},
@@ -133,7 +213,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 				}(),
 			},
 			Expected: testResponse{
-				[]byte(`{"id":"AF","friendlyName":"Third One","status":2,"since":"2016-05-12T16:28:00-07:00"}`),
+				[]byte(`{"id":"AF","friendlyName":"Third One","status":"occupied","since":"2016-05-12T16:28:00-07:00"}`),
 				func(e error) bool { return e == nil },
 			},
 		},
@@ -185,7 +265,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			Input: []byte(`{
 				"id":"1",
 				"friendlyName":"First One",
-				"status":1,
+				"status":"1",
 				"since":"2016-05-12T16:25:00-07:00"
 			}`),
 			Expected: testResponse{
@@ -205,7 +285,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			Input: []byte(`{
 				"id":"F",
 				"friendlyName":"Second One",
-				"status":0,
+				"status":"0",
 				"since":"2016-05-12T16:27:00-07:00"
 			}`),
 			Expected: testResponse{
@@ -225,7 +305,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			Input: []byte(`{
 				"id":"AF",
 				"friendlyName":"Third One",
-				"status":2,
+				"status":"2",
 				"since":"2016-05-12T16:28:00-07:00"
 			}`),
 			Expected: testResponse{
@@ -245,19 +325,19 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			Input: []byte(`{
 				"id":"DAF",
 				"friendlyName":"Another One",
-				"status":3,
+				"status":"3",
 				"since":"2016-05-12T16:30:00-07:00"
 			}`),
 			Expected: testResponse{
 				Resource{},
-				func(e error) bool { return IsOutOfRange(e) },
+				func(e error) bool { return e != nil },
 			},
 		},
 		jsonTest{ // Status Overflow
 			Input: []byte(`{
 				"id":"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
 				"friendlyName":"Third One",
-				"status":2,
+				"status":"2",
 				"since":"2016-05-12T16:28:00-07:00"
 			}`),
 			Expected: testResponse{

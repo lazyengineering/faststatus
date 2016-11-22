@@ -4,6 +4,7 @@
 package resource
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -19,15 +20,73 @@ type Resource struct {
 	Since        time.Time
 }
 
-const resourceFmtString = "%016X %v %s %s"
-
-// String will return a single-line representation of a resource.
+// String will return a single-line representation of a valid resource.
 // In order to optimize for standard streams, the output is as follows:
 //   {{Id}} {{Status}} {{Since}} {{FriendlyName}}
 // Formatted as follows:
-//   0123456789ABCDEF 1 2006-01-02T15:04:05Z07:00 My Resource
+//   0123456789ABCDEF busy 2006-01-02T15:04:05Z07:00 My Resource
 func (r Resource) String() string {
-	return fmt.Sprintf(resourceFmtString, r.Id, r.Status, r.Since.Format(time.RFC3339), r.FriendlyName)
+	txt, err := r.MarshalText()
+	if err != nil {
+		return ""
+	}
+	return string(txt)
+}
+
+// MarshalText encodes a Resource to the text representation. In order to
+// better stream text, the output is as follows:
+//   {{Id}} {{Status}} {{Since}} {{FriendlyName}}
+// Formatted as follows:
+//   0123456789ABCDEF busy 2006-01-02T15:04:05Z07:00 My Resource
+// An invalid Status (out of range, etc.) will result in an error.
+func (r Resource) MarshalText() ([]byte, error) {
+	var b bytes.Buffer
+
+	{ // ID
+		idBuf := bytes.Repeat([]byte("0"), 16)
+		idStr := strconv.FormatUint(r.Id, 16)
+		idBuf = append(idBuf[:16-len(idStr)], idStr...)
+		if _, err := b.Write(idBuf); err != nil {
+			return nil, fmt.Errorf("writing ID to resource text: %+v", err)
+		}
+		if _, err := b.WriteString(" "); err != nil {
+			return nil, fmt.Errorf("writing space to resource text: %+v", err)
+		}
+	}
+
+	{ // Status
+		txt, err := r.Status.MarshalText()
+		if err != nil {
+			return nil, fmt.Errorf("marshaling Status to text: %+v", err)
+		}
+		if _, err := b.Write(txt); err != nil {
+			return nil, fmt.Errorf("writing Status to resource text: %+v", err)
+		}
+		if _, err := b.WriteString(" "); err != nil {
+			return nil, fmt.Errorf("writing space to resource text: %+v", err)
+		}
+	}
+
+	{ // Since
+		txt, err := r.Since.MarshalText()
+		if err != nil {
+			return nil, fmt.Errorf("marshaling Since to text: %+v", err)
+		}
+		if _, err := b.Write(txt); err != nil {
+			return nil, fmt.Errorf("writing Since to resource text: %+v", err)
+		}
+		if _, err := b.WriteString(" "); err != nil {
+			return nil, fmt.Errorf("writing space to resource text: %+v", err)
+		}
+	}
+
+	{ // Friendly Name
+		if _, err := b.WriteString(r.FriendlyName); err != nil {
+			return nil, fmt.Errorf("writing FriendlyName to resource text: %+v", err)
+		}
+	}
+
+	return b.Bytes(), nil
 }
 
 // MarshalJSON will return simple a simple json structure for a resource.
