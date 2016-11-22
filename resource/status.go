@@ -44,7 +44,7 @@ func (s *Status) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-// MarshalText ecodes a Status to the text representation. For readable
+// MarshalText encodes a Status to the text representation. For readable
 // messages, this will be of the form "free|busy|occupied".
 func (s Status) MarshalText() ([]byte, error) {
 	if s < 0 || s >= Status(len(statusTextIdx)-1) {
