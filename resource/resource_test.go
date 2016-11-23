@@ -156,6 +156,106 @@ func TestResourceMarshalText(t *testing.T) {
 	}
 }
 
+func TestResourceUnmarshalText(t *testing.T) {
+	testCases := []struct {
+		name         string
+		txt          []byte
+		wantError    bool
+		wantResource Resource
+	}{
+		{"zero value",
+			[]byte{},
+			true,
+			Resource{},
+		},
+		{"valid busy",
+			[]byte("0000000000000001 busy 2016-05-12T16:25:00-07:00 First One"),
+			false,
+			Resource{
+				Id:           1,
+				FriendlyName: "First One",
+				Status:       Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		{"valid free",
+			[]byte("000000000000000f free 2016-05-12T16:27:00-07:00 Second One"),
+			false,
+			Resource{
+				Id:           0x0f,
+				FriendlyName: "Second One",
+				Status:       Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		{"valid occupied",
+			[]byte("00000000000000af occupied 2016-05-12T16:28:00-07:00 Third One"),
+			false,
+			Resource{
+				Id:           0xaf,
+				FriendlyName: "Third One",
+				Status:       Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		{"invalid id",
+			[]byte("daf occupied 2016-05-12T16:30:00-07:00 Another One"),
+			true,
+			Resource{},
+		},
+		{"invalid status",
+			[]byte("0000000000000daf 4 2016-05-12T16:30:00-07:00 Another One"),
+			true,
+			Resource{},
+		},
+		{"invalid since",
+			[]byte("0000000000000daf busy 16-05-12T16:30:00-07:00 Another One"),
+			true,
+			Resource{},
+		},
+		{"missing friendly name",
+			[]byte("0000000000000daf busy 2016-05-12T16:30:00-07:00"),
+			false,
+			Resource{
+				Id:     0xdaf,
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:30:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		{"missing timestamp",
+			[]byte("0000000000000daf busy"),
+			true,
+			Resource{},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var got Resource
+			err := (&got).UnmarshalText(tc.txt)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("resource.UnmarshalText(%q) = %+v, expected error? %+v", tc.txt, err, tc.wantError)
+			}
+			if !reflect.DeepEqual(got, tc.wantResource) {
+				t.Fatalf("%+v.UnmarshalText(%q) = error, expected %+v", got, tc.txt, tc.wantResource)
+			}
+		})
+	}
+}
+
 func TestResourceMarshalJSON(t *testing.T) {
 	type testResponse struct {
 		Value []byte

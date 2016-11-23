@@ -89,6 +89,41 @@ func (r Resource) MarshalText() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+// UnmarshalText decodes a Resource from a line of text. This matches the
+// output of the `MarshalText` method. Partial matches are only accepted missing
+// `FriendlyName` or `FriendlyName` and `Since`.
+func (r *Resource) UnmarshalText(txt []byte) error {
+	elements := bytes.Split(txt, []byte(" "))
+
+	if len(elements) < 3 {
+		return fmt.Errorf("invalid resource text")
+	}
+
+	if len(elements[0]) != 16 {
+		return fmt.Errorf("invalid resource id text")
+	}
+	tmp := Resource{}
+	var err error
+	tmp.Id, err = strconv.ParseUint(string(elements[0]), 16, 64)
+	if err != nil {
+		return fmt.Errorf("parsing Id from text: %+v", err)
+	}
+
+	if err := (&tmp.Status).UnmarshalText(elements[1]); err != nil {
+		return fmt.Errorf("parsing Status from text: %+v", err)
+	}
+
+	if err := (&tmp.Since).UnmarshalText(elements[2]); err != nil {
+		return fmt.Errorf("parsing Since from text: %+v", err)
+	}
+
+	tmp.FriendlyName = string(bytes.Join(elements[3:], []byte(" ")))
+
+	*r = tmp
+
+	return nil
+}
+
 // MarshalJSON will return simple a simple json structure for a resource.
 // Will not accept any Status that is out of range; see Status documentation
 // for more information.
