@@ -6,10 +6,35 @@ package resource
 import (
 	"bytes"
 	"encoding/json"
+	"math/rand"
 	"reflect"
 	"testing"
+	"testing/quick"
 	"time"
 )
+
+// Generate is used in testing to generate random valid Resource values
+func (r Resource) Generate(rand *rand.Rand, size int) reflect.Value {
+	rr := Resource{}
+
+	rr.Id = uint64(rand.Int())
+	buf := make([]byte, rand.Intn(100))
+	rand.Read(buf)
+	rr.FriendlyName = string(buf)
+	rr.Status = Status(rand.Int() % int(Occupied))
+	rr.Since = time.Date(
+		2016+rand.Intn(10),
+		time.Month(rand.Intn(11)+1),
+		rand.Intn(27)+1,
+		rand.Intn(24),
+		rand.Intn(60),
+		rand.Intn(60),
+		0,
+		time.UTC,
+	)
+
+	return reflect.ValueOf(rr)
+}
 
 // Expects [0xId] [Status] [Since] [FriendlyName]
 func TestResourceString(t *testing.T) {
@@ -253,6 +278,24 @@ func TestResourceUnmarshalText(t *testing.T) {
 				t.Fatalf("%+v.UnmarshalText(%q) = error, expected %+v", got, tc.txt, tc.wantResource)
 			}
 		})
+	}
+}
+
+func TestResourceMarshalUnmarshalText(t *testing.T) {
+	f := func(r Resource) bool {
+		b, err := r.MarshalText()
+		if err != nil {
+			return false
+		}
+		got := new(Resource)
+		err = got.UnmarshalText(b)
+		if err != nil {
+			return false
+		}
+		return reflect.DeepEqual(*got, r)
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
 	}
 }
 
