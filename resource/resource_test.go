@@ -17,7 +17,7 @@ import (
 func (r Resource) Generate(rand *rand.Rand, size int) reflect.Value {
 	rr := Resource{}
 
-	rr.Id = uint64(rand.Int())
+	rr.ID, _ = NewID()
 	buf := make([]byte, rand.Intn(100))
 	rand.Read(buf)
 	rr.FriendlyName = string(buf)
@@ -36,69 +36,73 @@ func (r Resource) Generate(rand *rand.Rand, size int) reflect.Value {
 	return reflect.ValueOf(rr)
 }
 
-// Expects [0xId] [Status] [Since] [FriendlyName]
+// Expects [ID] [Status] [Since] [FriendlyName]
 func TestResourceString(t *testing.T) {
-	type stringTest struct {
-		Expected string
-		Resource Resource
-	}
-	tests := []stringTest{
-		stringTest{ // Zero Value
-			Expected: "0000000000000000 free 0001-01-01T00:00:00Z ",
+	testCases := []struct {
+		name     string
+		expected string
+		resource Resource
+	}{
+		{"Zero Value",
+			"00000000-0000-0000-0000-000000000000 free 0001-01-01T00:00:00Z",
+			Resource{},
 		},
-		stringTest{ // Valid Busy
-			Expected: "0000000000000001 busy 2016-05-12T15:09:00-07:00 First One",
-			Resource: Resource{
-				Id:           1,
-				FriendlyName: "First One",
-				Status:       Busy,
+		{"Valid Busy",
+			"01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T15:09:00-07:00 First One",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "First One",
 			},
 		},
-		stringTest{ // Valid Free
-			Expected: "000000000000000f free 2016-05-12T15:39:00-07:00 Second One",
-			Resource: Resource{
-				Id:           15,
-				FriendlyName: "Second One",
-				Status:       Free,
+		{"Valid Free",
+			"23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T15:39:00-07:00 Second One",
+			Resource{
+				ID:     ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				Status: Free,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:39:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Second One",
 			},
 		},
-		stringTest{ // Valid Occupied
-			Expected: "00000000000000af occupied 2016-05-12T15:40:00-07:00 Third One",
-			Resource: Resource{
-				Id:           175,
-				FriendlyName: "Third One",
-				Status:       Occupied,
+		{"Valid Occupied",
+			"456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T15:40:00-07:00 Third One",
+			Resource{
+				ID:     ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				Status: Occupied,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:40:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Third One",
 			},
 		},
-		stringTest{ // Out of Range
-			Expected: "",
-			Resource: Resource{
-				Id:           3503,
-				FriendlyName: "Another One",
-				Status:       Occupied + 1,
+		{"Out of Range",
+			"",
+			Resource{
+				ID:     ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
+				Status: Occupied + 1,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:43:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Another One",
 			},
 		},
 	}
-	for _, st := range tests {
-		if actual := st.Resource.String(); actual != st.Expected {
-			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
-		}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if actual := tc.resource.String(); actual != tc.expected {
+				t.Fatalf("%+v.String() = %q, expected %q", tc.resource, actual, tc.expected)
+			}
+		})
 	}
 }
 
@@ -111,57 +115,57 @@ func TestResourceMarshalText(t *testing.T) {
 	}{
 		{"Zero Value",
 			Resource{},
-			[]byte("0000000000000000 free 0001-01-01T00:00:00Z "),
+			[]byte("00000000-0000-0000-0000-000000000000 free 0001-01-01T00:00:00Z"),
 			false,
 		},
 		{"Valid Busy",
 			Resource{
-				Id:           1,
-				FriendlyName: "First One",
-				Status:       Busy,
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "First One",
 			},
-			[]byte("0000000000000001 busy 2016-05-12T15:09:00-07:00 First One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T15:09:00-07:00 First One"),
 			false,
 		},
 		{"Valid Free",
 			Resource{
-				Id:           15,
-				FriendlyName: "Second One",
-				Status:       Free,
+				ID:     ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				Status: Free,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:39:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Second One",
 			},
-			[]byte("000000000000000f free 2016-05-12T15:39:00-07:00 Second One"),
+			[]byte("23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T15:39:00-07:00 Second One"),
 			false,
 		},
 		{"Valid Occupied",
 			Resource{
-				Id:           175,
-				FriendlyName: "Third One",
-				Status:       Occupied,
+				ID:     ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				Status: Occupied,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:40:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Third One",
 			},
-			[]byte("00000000000000af occupied 2016-05-12T15:40:00-07:00 Third One"),
+			[]byte("456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T15:40:00-07:00 Third One"),
 			false,
 		},
 		{"Out of Range",
 			Resource{
-				Id:           3503,
-				FriendlyName: "Another One",
-				Status:       Occupied + 1,
+				ID:     ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
+				Status: Occupied + 1,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:43:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Another One",
 			},
 			[]byte(""),
 			true,
@@ -194,10 +198,23 @@ func TestResourceUnmarshalText(t *testing.T) {
 			Resource{},
 		},
 		{"valid busy",
-			[]byte("0000000000000001 busy 2016-05-12T16:25:00-07:00 First One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T16:25:00-07:00 First One"),
 			false,
 			Resource{
-				Id:           1,
+				ID:           ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				FriendlyName: "First One",
+				Status:       Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+			},
+		},
+		{"valid busy (numeric status)",
+			[]byte("01234567-89ab-cdef-0123-456789abcdef 1 2016-05-12T16:25:00-07:00 First One"),
+			false,
+			Resource{
+				ID:           ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 				FriendlyName: "First One",
 				Status:       Busy,
 				Since: func() time.Time {
@@ -207,51 +224,77 @@ func TestResourceUnmarshalText(t *testing.T) {
 			},
 		},
 		{"valid free",
-			[]byte("000000000000000f free 2016-05-12T16:27:00-07:00 Second One"),
+			[]byte("23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T16:27:00-07:00 Second One"),
 			false,
 			Resource{
-				Id:           0x0f,
-				FriendlyName: "Second One",
-				Status:       Free,
+				ID:     ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				Status: Free,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Second One",
+			},
+		},
+		{"valid free (numeric status)",
+			[]byte("23456789-abcd-ef01-2345-6789abcdef01 0 2016-05-12T16:27:00-07:00 Second One"),
+			false,
+			Resource{
+				ID:     ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				Status: Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "Second One",
 			},
 		},
 		{"valid occupied",
-			[]byte("00000000000000af occupied 2016-05-12T16:28:00-07:00 Third One"),
+			[]byte("456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T16:28:00-07:00 Third One"),
 			false,
 			Resource{
-				Id:           0xaf,
-				FriendlyName: "Third One",
-				Status:       Occupied,
+				ID:     ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				Status: Occupied,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Third One",
+			},
+		},
+		{"valid occupied (numeric status)",
+			[]byte("456789ab-cdef-0123-4567-89abcdef0123 2 2016-05-12T16:28:00-07:00 Third One"),
+			false,
+			Resource{
+				ID:     ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				Status: Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "Third One",
 			},
 		},
 		{"invalid id",
-			[]byte("daf occupied 2016-05-12T16:30:00-07:00 Another One"),
+			[]byte("0123456--0000-0000-0000-000000000000 occupied 2016-05-12T16:30:00-07:00 Another One"),
 			true,
 			Resource{},
 		},
 		{"invalid status",
-			[]byte("0000000000000daf 4 2016-05-12T16:30:00-07:00 Another One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef 4 2016-05-12T16:30:00-07:00 Another One"),
 			true,
 			Resource{},
 		},
 		{"invalid since",
-			[]byte("0000000000000daf busy 16-05-12T16:30:00-07:00 Another One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 16-05-12T16:30:00-07:00 Another One"),
 			true,
 			Resource{},
 		},
 		{"missing friendly name",
-			[]byte("0000000000000daf busy 2016-05-12T16:30:00-07:00"),
+			[]byte("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa busy 2016-05-12T16:30:00-07:00"),
 			false,
 			Resource{
-				Id:     0xdaf,
+				ID:     ID{0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa},
 				Status: Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:30:00-07:00")
@@ -260,12 +303,11 @@ func TestResourceUnmarshalText(t *testing.T) {
 			},
 		},
 		{"missing timestamp",
-			[]byte("0000000000000daf busy"),
+			[]byte("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb busy"),
 			true,
 			Resource{},
 		},
 	}
-
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -300,227 +342,255 @@ func TestResourceMarshalUnmarshalText(t *testing.T) {
 }
 
 func TestResourceMarshalJSON(t *testing.T) {
-	type testResponse struct {
-		Value []byte
-		ErrOK func(error) bool
-	}
-	type jsonTest struct {
-		Input    Resource
-		Expected testResponse
-	}
-	tests := []jsonTest{
-		jsonTest{ // Zero Value
-			Expected: testResponse{
-				[]byte(`{"id":"0","friendlyName":"","status":"free","since":"0001-01-01T00:00:00Z"}`),
-				func(e error) bool { return e == nil },
-			},
+	testCases := []struct {
+		name      string
+		resource  Resource
+		wantValue []byte
+		wantError bool
+	}{
+		{"Zero Value",
+			Resource{},
+			[]byte(`{"id":"00000000-0000-0000-0000-000000000000","status":"free","since":"0001-01-01T00:00:00Z","friendlyName":""}`),
+			false,
 		},
-		jsonTest{ // Valid Busy
-			Input: Resource{
-				Id:           1,
-				FriendlyName: "First One",
-				Status:       Busy,
+		{"Valid Busy",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "First One",
 			},
-			Expected: testResponse{
-				[]byte(`{"id":"1","friendlyName":"First One","status":"busy","since":"2016-05-12T16:25:00-07:00"}`),
-				func(e error) bool { return e == nil },
-			},
+			[]byte(`{"id":"01234567-89ab-cdef-0123-456789abcdef","status":"busy","since":"2016-05-12T16:25:00-07:00","friendlyName":"First One"}`),
+			false,
 		},
-		jsonTest{ // Valid Free
-			Input: Resource{
-				Id:           15,
-				FriendlyName: "Second One",
-				Status:       Free,
+		{"Valid Free",
+			Resource{
+				ID:     ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				Status: Free,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Second One",
 			},
-			Expected: testResponse{
-				[]byte(`{"id":"F","friendlyName":"Second One","status":"free","since":"2016-05-12T16:27:00-07:00"}`),
-				func(e error) bool { return e == nil },
-			},
+			[]byte(`{"id":"23456789-abcd-ef01-2345-6789abcdef01","status":"free","since":"2016-05-12T16:27:00-07:00","friendlyName":"Second One"}`),
+			false,
 		},
-		jsonTest{ // Valid Occupied
-			Input: Resource{
-				Id:           175,
-				FriendlyName: "Third One",
-				Status:       Occupied,
+		{"Valid Occupied",
+			Resource{
+				ID:     ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				Status: Occupied,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Third One",
 			},
-			Expected: testResponse{
-				[]byte(`{"id":"AF","friendlyName":"Third One","status":"occupied","since":"2016-05-12T16:28:00-07:00"}`),
-				func(e error) bool { return e == nil },
-			},
+			[]byte(`{"id":"456789ab-cdef-0123-4567-89abcdef0123","status":"occupied","since":"2016-05-12T16:28:00-07:00","friendlyName":"Third One"}`),
+			false,
 		},
-		jsonTest{ // Out of Range
-			Input: Resource{
-				Id:           3503,
-				FriendlyName: "Another One",
-				Status:       Occupied + 1,
+		{"Out of Range",
+			Resource{
+				ID:     ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
+				Status: Occupied + 1,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:30:00-07:00")
 					return tt
 				}(),
+				FriendlyName: "Another One",
 			},
-			Expected: testResponse{
-				nil,
-				func(e error) bool { return !IsOutOfRange(e) },
-			},
+			nil,
+			true,
 		},
 	}
-	for _, st := range tests {
-		actual, err := json.Marshal(st.Input)
-		if !st.Expected.ErrOK(err) {
-			t.Errorf("Resource.MarshalJSON(%v) = '...', %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
-		}
-		if !reflect.DeepEqual(actual, st.Expected.Value) {
-			t.Errorf("Resource.MarshalJSON(%v) = %v, error; expected: %v", st.Input, actual, st.Expected.Value)
-		}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			actual, err := json.Marshal(tc.resource)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("json.Marshal(%+v) = <[]byte>, %+v; expected error? %+v", tc.resource, err, tc.wantError)
+			}
+			if !reflect.DeepEqual(actual, tc.wantValue) {
+				t.Fatalf("json.Marshal(%+v) = %s, <error>, expected %s", tc.resource, actual, tc.wantValue)
+			}
+		})
 	}
 }
 
 func TestResourceUnmarshalJSON(t *testing.T) {
-	type testResponse struct {
-		Value Resource
-		ErrOK func(error) bool
-	}
-	type jsonTest struct {
-		Input    []byte
-		Expected testResponse
-	}
-	tests := []jsonTest{
-		jsonTest{ // Zero Value
-			Input: []byte(`{}`),
-			Expected: testResponse{
-				Resource{},
-				func(e error) bool { return e == nil },
-			},
+	testCases := []struct {
+		name         string
+		input        []byte
+		wantResource Resource
+		wantError    bool
+	}{
+		{"Zero Value",
+			[]byte(`{}`),
+			Resource{},
+			false,
 		},
-		jsonTest{ // Valid Busy
-			Input: []byte(`{
-				"id":"1",
-				"friendlyName":"First One",
+		{"Valid Busy",
+			[]byte(`{
+				"id":"01234567-89ab-cdef-0123-456789abcdef",
 				"status":"1",
-				"since":"2016-05-12T16:25:00-07:00"
+				"since":"2016-05-12T16:25:00-07:00",
+				"friendlyName":"First One"
 			}`),
-			Expected: testResponse{
-				Resource{
-					Id:           1,
-					FriendlyName: "First One",
-					Status:       Busy,
-					Since: func() time.Time {
-						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-						return tt
-					}(),
-				},
-				func(e error) bool { return e == nil },
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
 			},
+			false,
 		},
-		jsonTest{ // Valid Free
-			Input: []byte(`{
-				"id":"F",
+		{"Valid Busy text value",
+			[]byte(`{
+				"id":"01234567-89ab-cdef-0123-456789abcdef",
+				"status":"busy",
+				"since":"2016-05-12T16:25:00-07:00",
+				"friendlyName":"First One"
+			}`),
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			false,
+		},
+		{"Valid Free",
+			[]byte(`{
 				"friendlyName":"Second One",
+				"id":"23456789-abcd-ef01-2345-6789abcdef01",
 				"status":"0",
 				"since":"2016-05-12T16:27:00-07:00"
 			}`),
-			Expected: testResponse{
-				Resource{
-					Id:           15,
-					FriendlyName: "Second One",
-					Status:       Free,
-					Since: func() time.Time {
-						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
-						return tt
-					}(),
-				},
-				func(e error) bool { return e == nil },
+			Resource{
+				ID:     ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				Status: Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "Second One",
 			},
+			false,
 		},
-		jsonTest{ // Valid Occupied
-			Input: []byte(`{
-				"id":"AF",
-				"friendlyName":"Third One",
-				"status":"2",
-				"since":"2016-05-12T16:28:00-07:00"
+		{"Valid Free text value",
+			[]byte(`{
+				"friendlyName":"Second One",
+				"id":"23456789-abcd-ef01-2345-6789abcdef01",
+				"status":"FrEe",
+				"since":"2016-05-12T16:27:00-07:00"
 			}`),
-			Expected: testResponse{
-				Resource{
-					Id:           175,
-					FriendlyName: "Third One",
-					Status:       Occupied,
-					Since: func() time.Time {
-						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
-						return tt
-					}(),
-				},
-				func(e error) bool { return e == nil },
+			Resource{
+				ID:     ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				Status: Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "Second One",
 			},
+			false,
 		},
-		jsonTest{ // Out of Range
-			Input: []byte(`{
-				"id":"DAF",
+		{"Valid Occupied",
+			[]byte(`{
+				"since":"2016-05-12T16:28:00-07:00",
+				"status":"2",
+				"friendlyName":"Third One",
+				"id":"456789ab-cdef-0123-4567-89abcdef0123"
+			}`),
+			Resource{
+				ID:     ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				Status: Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "Third One",
+			},
+			false,
+		},
+		{"Valid Occupied text value",
+			[]byte(`{
+				"since":"2016-05-12T16:28:00-07:00",
+				"status":"OCCUPIED",
+				"friendlyName":"Third One",
+				"id":"456789ab-cdef-0123-4567-89abcdef0123"
+			}`),
+			Resource{
+				ID:     ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				Status: Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "Third One",
+			},
+			false,
+		},
+		{"Out of Range",
+			[]byte(`{
+				"id":"6789abcd-ef01-2345-6789-abcdef012345",
 				"friendlyName":"Another One",
 				"status":"3",
 				"since":"2016-05-12T16:30:00-07:00"
 			}`),
-			Expected: testResponse{
-				Resource{},
-				func(e error) bool { return e != nil },
-			},
+			Resource{},
+			true,
 		},
-		jsonTest{ // Status Overflow
-			Input: []byte(`{
-				"id":"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+		{"Bad ID",
+			[]byte(`{
+				"id":"01234567-89ab-cdef-0123-456789abcdef0",
 				"friendlyName":"Third One",
 				"status":"2",
 				"since":"2016-05-12T16:28:00-07:00"
 			}`),
-			Expected: testResponse{
-				Resource{},
-				func(e error) bool { return e != nil },
-			},
+			Resource{},
+			true,
 		},
 	}
-	for _, st := range tests {
-		var actual Resource
-		err := json.Unmarshal(st.Input, &actual)
-		if !st.Expected.ErrOK(err) {
-			t.Errorf("Resource.UnmarshalJSON(%v) = %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
-		}
-		if !reflect.DeepEqual(actual, st.Expected.Value) {
-			t.Errorf("Resource.UnmarshalJSON(%v), Resource: %v; expected: %v", st.Input, actual, st.Expected.Value)
-		}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var actual Resource
+			err := json.Unmarshal(tc.input, &actual)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("json.Unmarshal(%s, *<Resource>) = %+v, expected error? %+v", tc.input, err, tc.wantError)
+			}
+			if !reflect.DeepEqual(actual, tc.wantResource) {
+				t.Fatalf("json.Unmarshal(%s, %+v) = <error>, expected %+v", tc.input, actual, tc.wantResource)
+			}
+		})
 	}
 }
 
 func TestResourceMarshalUnmarshalJSON(t *testing.T) {
-	type testResponse struct {
-		Value Resource
-		ErrOK func(error) bool
-	}
-	type jsonTest struct {
-		Input    Resource
-		Expected testResponse
-	}
-	tests := []jsonTest{
-		jsonTest{ // Zero Value
-			Input: Resource{},
-			Expected: testResponse{
-				Resource{},
-				func(e error) bool { return e == nil },
-			},
+	testCases := []struct {
+		name         string
+		resource     Resource
+		wantResource Resource
+		wantError    bool
+	}{
+		{"Zero Value",
+			Resource{},
+			Resource{},
+			false,
 		},
-		jsonTest{ // Valid Busy
-			Input: Resource{
-				Id:           1,
+		{"Valid Busy",
+			Resource{
+				ID:           ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 				FriendlyName: "First One",
 				Status:       Busy,
 				Since: func() time.Time {
@@ -528,22 +598,20 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 					return tt
 				}(),
 			},
-			Expected: testResponse{
-				Resource{
-					Id:           1,
-					FriendlyName: "First One",
-					Status:       Busy,
-					Since: func() time.Time {
-						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-						return tt
-					}(),
-				},
-				func(e error) bool { return e == nil },
+			Resource{
+				ID:           ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				FriendlyName: "First One",
+				Status:       Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
 			},
+			false,
 		},
-		jsonTest{ // Valid Free
-			Input: Resource{
-				Id:           15,
+		{"Valid Free",
+			Resource{
+				ID:           ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
 				FriendlyName: "Second One",
 				Status:       Free,
 				Since: func() time.Time {
@@ -551,22 +619,20 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 					return tt
 				}(),
 			},
-			Expected: testResponse{
-				Resource{
-					Id:           15,
-					FriendlyName: "Second One",
-					Status:       Free,
-					Since: func() time.Time {
-						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
-						return tt
-					}(),
-				},
-				func(e error) bool { return e == nil },
+			Resource{
+				ID:           ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+				FriendlyName: "Second One",
+				Status:       Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+					return tt
+				}(),
 			},
+			false,
 		},
-		jsonTest{ // Valid Occupied
-			Input: Resource{
-				Id:           175,
+		{"Valid Occupied",
+			Resource{
+				ID:           ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
 				FriendlyName: "Third One",
 				Status:       Occupied,
 				Since: func() time.Time {
@@ -574,23 +640,20 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 					return tt
 				}(),
 			},
-			Expected: testResponse{
-				Resource{
-					Id:           175,
-					FriendlyName: "Third One",
-					Status:       Occupied,
-					Since: func() time.Time {
-						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
-						return tt
-					}(),
-				},
-				// func(e error) bool { return e == nil },
-				func(e error) bool { return !IsOutOfRange(e) },
+			Resource{
+				ID:           ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+				FriendlyName: "Third One",
+				Status:       Occupied,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+					return tt
+				}(),
 			},
+			false,
 		},
-		jsonTest{ // Out of Range
-			Input: Resource{
-				Id:           3503,
+		{"Out of Range",
+			Resource{
+				ID:           ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
 				FriendlyName: "Another One",
 				Status:       Occupied + 1,
 				Since: func() time.Time {
@@ -598,27 +661,28 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 					return tt
 				}(),
 			},
-			Expected: testResponse{
-				Resource{},
-				func(e error) bool { return !IsOutOfRange(e) },
-			},
+			Resource{},
+			true,
 		},
 	}
-	for _, st := range tests {
-		actual, err := func(r Resource) (Resource, error) {
-			ac := new(Resource)
-			tmp, erx := json.Marshal(r)
-			if erx != nil {
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			actual, err := func(r Resource) (Resource, error) {
+				ac := new(Resource)
+				tmp, erx := json.Marshal(r)
+				if erx != nil {
+					return *ac, erx
+				}
+				erx = json.Unmarshal(tmp, ac)
 				return *ac, erx
+			}(tc.resource)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("json.Unmarshal(json.Marshal(%+v)) = %+v, expected error? %+v", tc.resource, err, tc.wantError)
 			}
-			erx = json.Unmarshal(tmp, ac)
-			return *ac, erx
-		}(st.Input)
-		if !st.Expected.ErrOK(err) {
-			t.Errorf("Resource.UnmarshalJSON(%v) = %v; expected: %#v", st.Input, err, st.Expected.ErrOK)
-		}
-		if !reflect.DeepEqual(actual, st.Expected.Value) {
-			t.Errorf("Resource.UnmarshalJSON(%v), Resource: %#v; expected: %#v", st.Input, actual, st.Expected.Value)
-		}
+			if !reflect.DeepEqual(actual, tc.wantResource) {
+				t.Fatalf("json.Unmarshal(json.Marshal(%+v)) = <error>, expected %+v", tc.resource, actual, tc.wantResource)
+			}
+		})
 	}
 }
