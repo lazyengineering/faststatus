@@ -53,7 +53,6 @@ func TestStatusMarshalUnmarshalBinary(t *testing.T) {
 			t.Logf("unmarshaling binary from status: %+v", err)
 			return false
 		}
-		t.Logf("got %+v, expected %+v, in between %+v", *gotStatus, s, b)
 		return reflect.DeepEqual(*gotStatus, s)
 	}
 	if err := quick.Check(f, nil); err != nil {
@@ -233,7 +232,6 @@ func TestStatusMarshalUnmarshalText(t *testing.T) {
 			t.Logf("unmarshaling text from status: %+v", err)
 			return false
 		}
-		t.Logf("got %+v, expected %+v, in between %+v", *gotStatus, s, txt)
 		return reflect.DeepEqual(*gotStatus, s)
 	}
 	if err := quick.Check(f, nil); err != nil {
