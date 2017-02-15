@@ -1,7 +1,7 @@
 // Copyright 2016-2017 Jesse Allen. All rights reserved
 // Released under the MIT license found in the LICENSE file.
 
-package resource
+package faststatus
 
 import (
 	"crypto/rand"
