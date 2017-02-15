@@ -1,33 +1,103 @@
-// Copyright 2016 Jesse Allen. All rights reserved
+// Copyright 2016-2017 Jesse Allen. All rights reserved
 // Released under the MIT license found in the LICENSE file.
 
 package resource
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 )
 
 // A Resource represents any resource (a person, a bathroom, a server, etc.)
 // that needs to communicate how busy it is.
 type Resource struct {
-	Id           uint64
-	FriendlyName string
+	ID           ID
 	Status       Status
 	Since        time.Time
+	FriendlyName string
 }
 
-const resourceFmtString = "%016X %v %s %s"
-
-// String will return a single-line representation of a resource.
+// String will return a single-line representation of a valid resource.
 // In order to optimize for standard streams, the output is as follows:
-//   {{Id}} {{Status}} {{Since}} {{FriendlyName}}
+//   {{ID}} {{Status}} {{Since}} {{FriendlyName}}
 // Formatted as follows:
-//   0123456789ABCDEF 1 2006-01-02T15:04:05Z07:00 My Resource
+//   01234567-89ab-cdef-0123-456789abcdef busy 2006-01-02T15:04:05Z07:00 My Resource
 func (r Resource) String() string {
-	return fmt.Sprintf(resourceFmtString, r.Id, r.Status, r.Since.Format(time.RFC3339), r.FriendlyName)
+	txt, err := r.MarshalText()
+	if err != nil {
+		return ""
+	}
+	return string(txt)
+}
+
+// MarshalText encodes a Resource to the text representation. In order to
+// better stream text, the output is as follows:
+//   {{ID}} {{Status}} {{Since}} {{FriendlyName}}
+// Formatted as follows:
+//   01234567-89ab-cdef-0123-456789abcdef busy 2006-01-02T15:04:05Z07:00 My Resource
+// An invalid Status (out of range, etc.) will result in an error.
+func (r Resource) MarshalText() ([]byte, error) {
+	txt := make([]byte, 0, 128)
+
+	id, err := r.ID.MarshalText()
+	if err != nil {
+		return nil, fmt.Errorf("marshaling text for ID: %+v", err)
+	}
+	txt = append(txt, id...)
+
+	txt = append(txt, ' ')
+	status, err := r.Status.MarshalText()
+	if err != nil {
+		return nil, fmt.Errorf("marshaling Status to text: %+v", err)
+	}
+	txt = append(txt, status...)
+
+	txt = append(txt, ' ')
+	since, err := r.Since.MarshalText()
+	if err != nil {
+		return nil, fmt.Errorf("marshaling Since to text: %+v", err)
+	}
+	txt = append(txt, since...)
+
+	if r.FriendlyName != "" {
+		txt = append(txt, ' ')
+		txt = append(txt, r.FriendlyName...)
+	}
+
+	return txt, nil
+}
+
+// UnmarshalText decodes a Resource from a line of text. This matches the
+// output of the `MarshalText` method. Partial matches are only accepted missing
+// `FriendlyName` or `FriendlyName` and `Since`.
+func (r *Resource) UnmarshalText(txt []byte) error {
+	elements := bytes.Split(txt, []byte(" "))
+
+	if len(elements) < 3 {
+		return fmt.Errorf("invalid resource text")
+	}
+
+	tmp := Resource{}
+
+	if err := (&tmp.ID).UnmarshalText(elements[0]); err != nil {
+		return fmt.Errorf("parsing ID from text: %+v", err)
+	}
+
+	if err := (&tmp.Status).UnmarshalText(elements[1]); err != nil {
+		return fmt.Errorf("parsing Status from text: %+v", err)
+	}
+
+	if err := (&tmp.Since).UnmarshalText(elements[2]); err != nil {
+		return fmt.Errorf("parsing Since from text: %+v", err)
+	}
+
+	tmp.FriendlyName = string(bytes.Join(elements[3:], []byte(" ")))
+
+	*r = tmp
+
+	return nil
 }
 
 // MarshalJSON will return simple a simple json structure for a resource.
@@ -35,15 +105,15 @@ func (r Resource) String() string {
 // for more information.
 func (r Resource) MarshalJSON() ([]byte, error) {
 	tmpResource := struct {
-		Id           string    `json:"id"`
-		FriendlyName string    `json:"friendlyName"`
+		ID           ID        `json:"id"`
 		Status       Status    `json:"status"`
 		Since        time.Time `json:"since"`
+		FriendlyName string    `json:"friendlyName"`
 	}{
-		fmt.Sprintf("%X", r.Id),
-		r.FriendlyName,
+		r.ID,
 		r.Status,
 		r.Since,
+		r.FriendlyName,
 	}
 	return json.Marshal(tmpResource)
 }
@@ -54,24 +124,16 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 func (r *Resource) UnmarshalJSON(raw []byte) error {
 	// allow zero values with omitempty
 	tmp := new(struct {
-		Id           string    `json:",omitempty"`
-		FriendlyName string    `json:",omitempty"`
+		ID           ID        `json:",omitempty"`
 		Status       Status    `json:",omitempty"`
 		Since        time.Time `json:",omitempty"`
+		FriendlyName string    `json:",omitempty"`
 	})
 	if err := json.Unmarshal(raw, tmp); err != nil {
 		return err
 	}
 
-	if len(tmp.Id) == 0 {
-		tmp.Id = "0"
-	}
-	if id, err := strconv.ParseUint(tmp.Id, 16, 64); err != nil {
-		return err
-	} else {
-		r.Id = id
-	}
-
+	r.ID = tmp.ID
 	r.FriendlyName = tmp.FriendlyName
 	r.Status = tmp.Status
 	r.Since = tmp.Since

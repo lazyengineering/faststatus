@@ -1,13 +1,12 @@
-// Copyright 2016 Jesse Allen. All rights reserved
+// Copyright 2016-2017 Jesse Allen. All rights reserved
 // Released under the MIT license found in the LICENSE file.
 
 package resource
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
 	"fmt"
-	"strconv"
 )
 
 // Status represents how busy a given resource is on a scale from 0–2,
@@ -22,67 +21,70 @@ const (
 	Busy                   // resource is busy
 	Occupied               // resource completely busy
 )
+const statusText = "freebusyoccupied"
+const statusNumbers = "012"
 
-// For the purposes of the API, it is much cleaner to keep the
-// string representation to "0,1,2" instead of the pretty text.
-// Use Pretty instead for those representations. Out of range
-// Status values will be returned the same as Free.
-func (s Status) String() string {
-	return strconv.FormatUint(uint64(s.forceRange()), 10)
+var statusTextIdx = [...]uint8{0, 4, 8, 16}
+
+// MarshalBinary encodes a Status to a single byte in a slice
+func (s Status) MarshalBinary() ([]byte, error) {
+	return append([]byte{}, byte(s)), nil
 }
 
-// For those few times where the pretty version of the status
-// is requested, Pretty() will return the full text representation.
-// Out of range status values will be returned as "Free".
-func (s Status) Pretty() string {
-	switch s.forceRange() {
-	case Busy:
-		return "Busy"
-	case Occupied:
-		return "Occupied"
-	case Free:
-		return "Free"
-	default: // this should be impossible...
-		return ""
+// UnmarshalBinary decodes a Status from a single byte
+func (s *Status) UnmarshalBinary(b []byte) error {
+	if len(b) != 1 {
+		return fmt.Errorf("status must be one byte")
 	}
-}
-
-func (s Status) inRange() bool {
-	return s <= Occupied
-}
-
-// Return a valid Status in Range (only for use inside this package)
-func (s Status) forceRange() Status {
-	if !s.inRange() {
-		return Free
-	}
-	return s
-}
-
-// MarshalJSON will return a numeric value in the valid range of Status values.
-// A status that is higher than the defined status values will return an error
-// which can be checked using the `IsOutOfRange(error)` function.
-func (s Status) MarshalJSON() ([]byte, error) {
-	if !s.inRange() {
-		return nil, errOutOfRange
-	}
-	return json.Marshal(uint8(s))
-}
-
-// UnmarshalJSON will assign a valid Status value from a numeric value.
-// A status that is higher than the defined status values will return an error
-// which can be checked using the `IsOutOfRange(error)` function.
-func (s *Status) UnmarshalJSON(raw []byte) error {
-	t := new(uint8)
-	if err := json.Unmarshal(raw, t); err != nil {
-		return err
-	}
-	*s = Status(*t)
-	if !s.inRange() {
-		*s = Free // set to zero value by default
+	tmp := Status(b[0])
+	if tmp > Occupied {
 		return errOutOfRange
 	}
+	*s = tmp
 	return nil
+}
+
+// MarshalText encodes a Status to the text representation. For readable
+// messages, this will be of the form "free|busy|occupied".
+func (s Status) MarshalText() ([]byte, error) {
+	if s < 0 || s >= Status(len(statusTextIdx)-1) {
+		return nil, errOutOfRange
+	}
+	return []byte(statusText)[statusTextIdx[s]:statusTextIdx[s+1]], nil
+}
+
+// UnmarshalText decodes a Status from a text representation.
+// This can include an integer as text or a case-insensitive name
+// like "Free|BUSY|occupied"
+func (s *Status) UnmarshalText(txt []byte) error {
+	if len(txt) == 0 {
+		return fmt.Errorf("status must be non-empty byte slice")
+	}
+	if len(txt) == 1 {
+		for i, v := range []byte(statusNumbers) {
+			if txt[0] == v {
+				*s = Status(i)
+				return nil
+			}
+		}
+	}
+	for i := range statusTextIdx[1:] {
+		if bytes.EqualFold(txt, []byte(statusText)[statusTextIdx[i]:statusTextIdx[i+1]]) {
+			*s = Status(i)
+			return nil
+		}
+	}
+	return fmt.Errorf("not a valid status value")
+}
+
+// String returns a simple text representation of the Status.
+// Out of range status values will be returned as "Free".
+func (s Status) String() string {
+	if s < 0 || s >= Status(len(statusTextIdx)-1) {
+		s = Free
+	}
+	txt, _ := s.MarshalText()
+	return string(txt)
 }
 
 type statusError struct {
