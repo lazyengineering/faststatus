@@ -1,0 +1,161 @@
+// Copyright 2016-2017 Jesse Allen. All rights reserved
+// Released under the MIT license found in the LICENSE file.
+
+package store_test
+
+import (
+	"io/ioutil"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/boltdb/bolt"
+
+	"github.com/lazyengineering/faststatus"
+	"github.com/lazyengineering/faststatus/store"
+)
+
+func TestSave(t *testing.T) {
+	db, cleanup := newEmptyDB(t)
+	defer cleanup()
+
+	// order of test cases matters here (these are not stateless)
+	testCases := []struct {
+		name     string
+		store    *store.Store
+		resource faststatus.Resource
+		wantErr  bool
+	}{
+		{"Save should return an error if the store is nil",
+			nil,
+			faststatus.Resource{
+				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: faststatus.Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			true,
+		},
+		{"Save should return an error if the database is not initialized",
+			&store.Store{},
+			faststatus.Resource{
+				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: faststatus.Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			true,
+		},
+		{"Save should return an error for a resource with a zero-value ID",
+			&store.Store{DB: db},
+			faststatus.Resource{
+				ID:     faststatus.ID{},
+				Status: faststatus.Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			true,
+		},
+		{"Save should not return an error for a new resource",
+			&store.Store{DB: db},
+			faststatus.Resource{
+				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: faststatus.Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			false,
+		},
+		{"Save should return an error if there is a more recent version already saved",
+			&store.Store{DB: db},
+			faststatus.Resource{
+				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: faststatus.Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			true,
+		},
+		{"Save should not return an error for the most recent valid resource",
+			&store.Store{DB: db},
+			faststatus.Resource{
+				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: faststatus.Free,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:15:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			false,
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.store.Save(tc.resource)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("%+v.Save(%+v) = %+v, expected error? %+v", tc.store, tc.resource, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestSaveIsIdempotent(t *testing.T) {
+	// use a behavioral test for this
+}
+
+func TestSaveIsConcurrencySafe(t *testing.T) {
+	// run this with the race detector for best results
+	// Save should be safe to use concurrently
+}
+
+func TestSaveStoresOnlyLatest(t *testing.T) {
+	// Save should store only the version of a resource with the highest timestamp,
+	// regardless the order of arrival. This test should focus on concurrent saves
+	// (sequential saves are covered in the table test above)
+}
+
+func newEmptyDB(t *testing.T) (*bolt.DB, func()) {
+	path, cleanup := tempfile(t)
+	db, err := bolt.Open(path, 0600, &bolt.Options{Timeout: time.Second})
+	if err != nil {
+		cleanup()
+		t.Fatalf("opening new database for tests: %+v", err)
+	}
+	return db, func() {
+		defer cleanup()
+		if err := db.Close(); err != nil {
+			t.Fatalf("closing database: %+v", err)
+		}
+	}
+}
+
+func tempfile(t *testing.T) (string, func()) {
+	tmpfile, err := ioutil.TempFile("", "_test")
+	if err != nil {
+		t.Fatalf("creating test file: %+v", err)
+	}
+	fileName := tmpfile.Name()
+	if err := tmpfile.Close(); err != nil {
+		t.Fatalf("closing test file: %+v", err)
+	}
+	return fileName, func() {
+		os.Remove(fileName)
+	}
+}
