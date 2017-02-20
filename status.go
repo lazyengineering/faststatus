@@ -16,10 +16,11 @@ import (
 // of applications.
 type Status uint8
 
+// The following predefined Status values are the only valid status values
 const (
-	Free     Status = iota // completely free resource
-	Busy                   // resource is busy
-	Occupied               // resource completely busy
+	Free     Status = iota // a completely unutilized resource
+	Busy                   // a resource that is being utilized, but not to capacity
+	Occupied               // a resource that is being utilized to capacity
 )
 const statusText = "freebusyoccupied"
 const statusNumbers = "012"
