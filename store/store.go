@@ -45,7 +45,7 @@ func (s *Store) Save(r faststatus.Resource) error {
 				return fmt.Errorf("unmarshaling latest stored resource: %+v", err)
 			}
 			if latestResource.Since.After(r.Since) {
-				return fmt.Errorf("a more recent versoin of this resource already exists in store")
+				return errorMoreRecentVersion
 			}
 		}
 		//TODO: Implement MarshalBinary() for Resource
@@ -103,6 +103,7 @@ func (s *Store) Get(id faststatus.ID) (faststatus.Resource, error) {
 var (
 	errorStoreNotInitialized = fmt.Errorf("store not initialized")
 	errorDBNotInitialized    = fmt.Errorf("no bolt database for store")
+	errorMoreRecentVersion   = fmt.Errorf("a more recent version of this resource already exists in store")
 )
 
 var (

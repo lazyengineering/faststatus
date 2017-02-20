@@ -6,6 +6,7 @@ package store_test
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -117,18 +118,218 @@ func TestSave(t *testing.T) {
 }
 
 func TestSaveIsIdempotent(t *testing.T) {
-	// use a behavioral test for this (requires some way of checking)
+	db, cleanup := newEmptyDB(t)
+	defer cleanup()
+
+	s := &store.Store{DB: db}
+
+	r := faststatus.Resource{
+		ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+		Status: faststatus.Free,
+		Since: func() time.Time {
+			tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+			return tt.UTC()
+		}(),
+		FriendlyName: "First One",
+	}
+
+	for i := 0; i < 20; i++ {
+		err := s.Save(r)
+		if err != nil {
+			t.Fatalf("unexpected error saving resource: %+v", err)
+		}
+		got, err := s.Get(r.ID)
+		if err != nil {
+			t.Fatalf("unexpected error getting final resource: %+v", err)
+		}
+		if got != r {
+			t.Fatalf("getting resource for the %d time: got %+v, expected %+v", i+1, got, r)
+		}
+	}
 }
 
 func TestSaveIsConcurrencySafe(t *testing.T) {
-	// run this with the race detector for best results
-	// Save should be safe to use concurrently
+	db, cleanup := newEmptyDB(t)
+	defer cleanup()
+
+	s := &store.Store{DB: db}
+
+	testResources := []faststatus.Resource{
+		faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "First One",
+		},
+		faststatus.Resource{
+			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+			Status: faststatus.Free,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Second One",
+		},
+		faststatus.Resource{
+			ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+			Status: faststatus.Occupied,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Third One",
+		},
+		faststatus.Resource{
+			ID: faststatus.ID{
+				0x67,
+				0x89,
+				0xab,
+				0xcd,
+				0xef,
+				0x01,
+				0x23,
+				0x45,
+				0x67,
+				0x89,
+				0xab,
+				0xcd,
+				0xef,
+				0x01,
+				0x23,
+				0x45,
+			},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "First One",
+		},
+		faststatus.Resource{
+			ID: faststatus.ID{
+				0x89,
+				0xab,
+				0xcd,
+				0xef,
+				0x01,
+				0x23,
+				0x45,
+				0x67,
+				0x89,
+				0xab,
+				0xcd,
+				0xef,
+				0x01,
+				0x23,
+				0x45,
+				0x67,
+			},
+			Status: faststatus.Free,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Another One",
+		},
+	}
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for _, r := range testResources {
+		wg.Add(1)
+		go func(r faststatus.Resource) {
+			defer wg.Done()
+			<-start
+			err := s.Save(r)
+			if err != nil {
+				t.Fatalf("no errors expected for concurrency test: %+v", err)
+			}
+		}(r)
+	}
+	close(start)
+	wg.Wait()
 }
 
 func TestSaveStoresOnlyLatest(t *testing.T) {
 	// Save should store only the version of a resource with the highest timestamp,
 	// regardless the order of arrival. This test should focus on concurrent saves
 	// (sequential saves are covered in the table test above)
+	db, cleanup := newEmptyDB(t)
+	defer cleanup()
+
+	s := &store.Store{DB: db}
+
+	testResources := map[string]faststatus.Resource{
+		"first": faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Free,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "First One",
+		},
+		"second": faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Second One",
+		},
+		"third": faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Occupied,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:02-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Third One",
+		},
+		"fourth": faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Free,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:03-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Fourth One",
+		},
+		"final": faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:04-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Last One",
+		},
+	}
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for _, r := range testResources {
+		wg.Add(1)
+		go func(r faststatus.Resource) {
+			defer wg.Done()
+			<-start
+			// some errors are expected, but not always
+			_ = s.Save(r)
+		}(r)
+	}
+	close(start)
+	wg.Wait()
+	got, err := s.Get(testResources["final"].ID)
+	if err != nil {
+		t.Fatalf("unexpected error getting final resource: %+v", err)
+	}
+	if got != testResources["final"] {
+		t.Fatalf("getting final resource: got %+v, expected %+v", got, testResources["final"])
+	}
 }
 
 func TestGet(t *testing.T) {
@@ -213,13 +414,115 @@ func TestGet(t *testing.T) {
 }
 
 func TestGetIsConcurrencySafe(t *testing.T) {
-	// Get should be concurrency safe
-	// * special test case
+	db, cleanup := newEmptyDB(t)
+	defer cleanup()
+
+	s := &store.Store{DB: db}
+
+	testResources := []faststatus.Resource{
+		faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "First One",
+		},
+		faststatus.Resource{
+			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+			Status: faststatus.Free,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Second One",
+		},
+		faststatus.Resource{
+			ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
+			Status: faststatus.Occupied,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Third One",
+		},
+		faststatus.Resource{
+			ID:     faststatus.ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "First One",
+		},
+		faststatus.Resource{
+			ID:     faststatus.ID{0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67},
+			Status: faststatus.Free,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "Another One",
+		},
+	}
+
+	for _, r := range testResources {
+		err := s.Save(r)
+		if err != nil {
+			t.Fatalf("no errors expected for concurrency test: %+v", err)
+		}
+	}
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for _, r := range testResources {
+		wg.Add(1)
+		go func(r faststatus.Resource) {
+			defer wg.Done()
+			<-start
+			got, err := s.Get(r.ID)
+			if err != nil {
+				t.Fatalf("no errors expected for concurrency test: %+v", err)
+			}
+			if got != r {
+				t.Fatalf("getting test resource from store: got %+v, expected %+v", got, r)
+			}
+		}(r)
+	}
+	close(start)
+	wg.Wait()
 }
 
 func TestGetIsIdempotent(t *testing.T) {
-	// Get should be idempotent
-	// * a behavioral test should work for this
+	db, cleanup := newEmptyDB(t)
+	defer cleanup()
+
+	s := &store.Store{DB: db}
+
+	r := faststatus.Resource{
+		ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+		Status: faststatus.Free,
+		Since: func() time.Time {
+			tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+			return tt.UTC()
+		}(),
+		FriendlyName: "First One",
+	}
+	err := s.Save(r)
+	if err != nil {
+		t.Fatalf("unexpected error saving resource: %+v", err)
+	}
+
+	for i := 0; i < 20; i++ {
+		got, err := s.Get(r.ID)
+		if err != nil {
+			t.Fatalf("unexpected error getting final resource: %+v", err)
+		}
+		if got != r {
+			t.Fatalf("getting resource for the %d time: got %+v, expected %+v", i+1, got, r)
+		}
+	}
 }
 
 func newEmptyDB(t *testing.T) (*bolt.DB, func()) {
