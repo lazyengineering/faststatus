@@ -107,6 +107,9 @@ func (r *Resource) UnmarshalText(txt []byte) error {
 	if err := (&tmp.Since).UnmarshalText(elements[2]); err != nil {
 		return fmt.Errorf("parsing Since from text: %+v", err)
 	}
+	if tmp.Since.IsZero() {
+		tmp.Since = time.Time{}
+	}
 
 	tmp.FriendlyName = string(bytes.Join(elements[3:], []byte(" ")))
 
