@@ -11,26 +11,65 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
+	"unicode/utf8"
 )
 
+var availableLocations []*time.Location
+
+func init() {
+	availableLocations = []*time.Location{
+		mustLocation(time.LoadLocation("Europe/London")),
+		mustLocation(time.LoadLocation("America/New_York")),
+		mustLocation(time.LoadLocation("America/Los_Angeles")),
+		mustLocation(time.LoadLocation("Australia/Sydney")),
+		mustLocation(time.LoadLocation("Asia/Tokyo")),
+		mustLocation(time.LoadLocation("Asia/Shanghai")),
+		mustLocation(time.LoadLocation("Asia/Kolkata")),
+		mustLocation(time.LoadLocation("Europe/Istanbul")),
+		mustLocation(time.LoadLocation("Europe/Zurich")),
+		time.UTC,
+	}
+}
+
+func mustLocation(loc *time.Location, err error) *time.Location {
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}
+
 // Generate is used in testing to generate random valid Resource values
-func (r Resource) Generate(rand *rand.Rand, size int) reflect.Value {
+func (r Resource) Generate(rgen *rand.Rand, size int) reflect.Value {
 	rr := Resource{}
 
 	rr.ID, _ = NewID()
-	buf := make([]byte, rand.Intn(100))
-	rand.Read(buf)
-	rr.FriendlyName = string(buf)
-	rr.Status = Status(rand.Int() % int(Occupied))
+	rr.FriendlyName = func(rgen *rand.Rand, size int) string {
+		txt := make([]byte, 0, size)
+		for len(txt) < size {
+			p := make([]byte, 1)
+			n, err := rgen.Read(p)
+			if err != nil {
+				panic(err)
+			}
+			if n != 1 {
+				continue
+			}
+			if utf8.Valid(p) {
+				txt = append(txt, p...)
+			}
+		}
+		return string(txt)
+	}(rgen, rgen.Intn(100))
+	rr.Status = Status(rgen.Int() % int(Occupied))
 	rr.Since = time.Date(
-		2016+rand.Intn(10),
-		time.Month(rand.Intn(11)+1),
-		rand.Intn(27)+1,
-		rand.Intn(24),
-		rand.Intn(60),
-		rand.Intn(60),
+		2016+rgen.Intn(10),
+		time.Month(rgen.Intn(11)+1),
+		rgen.Intn(27)+1,
+		rgen.Intn(24),
+		rgen.Intn(60),
+		rgen.Intn(60),
 		0,
-		time.UTC,
+		availableLocations[rgen.Int()%len(availableLocations)],
 	)
 
 	return reflect.ValueOf(rr)
@@ -334,7 +373,7 @@ func TestResourceMarshalUnmarshalText(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		return reflect.DeepEqual(*got, r)
+		return got.Equal(r)
 	}
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
@@ -577,113 +616,20 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 }
 
 func TestResourceMarshalUnmarshalJSON(t *testing.T) {
-	testCases := []struct {
-		name         string
-		resource     Resource
-		wantResource Resource
-		wantError    bool
-	}{
-		{"Zero Value",
-			Resource{},
-			Resource{},
-			false,
-		},
-		{"Valid Busy",
-			Resource{
-				ID:           ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
-				FriendlyName: "First One",
-				Status:       Busy,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-					return tt
-				}(),
-			},
-			Resource{
-				ID:           ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
-				FriendlyName: "First One",
-				Status:       Busy,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-					return tt
-				}(),
-			},
-			false,
-		},
-		{"Valid Free",
-			Resource{
-				ID:           ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
-				FriendlyName: "Second One",
-				Status:       Free,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
-					return tt
-				}(),
-			},
-			Resource{
-				ID:           ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
-				FriendlyName: "Second One",
-				Status:       Free,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
-					return tt
-				}(),
-			},
-			false,
-		},
-		{"Valid Occupied",
-			Resource{
-				ID:           ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
-				FriendlyName: "Third One",
-				Status:       Occupied,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
-					return tt
-				}(),
-			},
-			Resource{
-				ID:           ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
-				FriendlyName: "Third One",
-				Status:       Occupied,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
-					return tt
-				}(),
-			},
-			false,
-		},
-		{"Out of Range",
-			Resource{
-				ID:           ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
-				FriendlyName: "Another One",
-				Status:       Occupied + 1,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:30:00-07:00")
-					return tt
-				}(),
-			},
-			Resource{},
-			true,
-		},
+	f := func(r Resource) bool {
+		b, err := r.MarshalJSON()
+		if err != nil {
+			return false
+		}
+		got := new(Resource)
+		err = got.UnmarshalJSON(b)
+		if err != nil {
+			return false
+		}
+		return got.Equal(r)
 	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			actual, err := func(r Resource) (Resource, error) {
-				ac := new(Resource)
-				tmp, erx := json.Marshal(r)
-				if erx != nil {
-					return *ac, erx
-				}
-				erx = json.Unmarshal(tmp, ac)
-				return *ac, erx
-			}(tc.resource)
-			if (err != nil) != tc.wantError {
-				t.Fatalf("json.Unmarshal(json.Marshal(%+v)) = %+v, expected error? %+v", tc.resource, err, tc.wantError)
-			}
-			if !reflect.DeepEqual(actual, tc.wantResource) {
-				t.Fatalf("json.Unmarshal(json.Marshal(%+v)) = <error>, got %+v, expected %+v", tc.resource, actual, tc.wantResource)
-			}
-		})
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
 	}
 }
 
