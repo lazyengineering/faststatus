@@ -1,7 +1,7 @@
 Fast Status
 ====
 
-[![Build Status](https://travis-ci.org/lazyengineering/faststatus.png?branch=master)](https://travis-ci.org/lazyengineering/faststatus) [![Stories in Ready](https://badge.waffle.io/lazyengineering/faststatus.png?label=ready&title=Ready)](https://waffle.io/lazyengineering/faststatus)
+[![GoDoc](https://godoc.org/github.com/lazyengineering/faststatus?status.svg)](https://godoc.org/github.com/lazyengineering/faststatus) [![Go Report Card](https://goreportcard.com/badge/github.com/lazyengineering/faststatus)](https://goreportcard.com/report/github.com/lazyengineering/faststatus) [![Build Status](https://travis-ci.org/lazyengineering/faststatus.svg?branch=master)](https://travis-ci.org/lazyengineering/faststatus) [![Stories in Ready](https://badge.waffle.io/lazyengineering/faststatus.png?label=ready&title=Ready)](https://waffle.io/lazyengineering/faststatus)
 
 Simple API for sharing if a resource is free, busy, or very busy
 
