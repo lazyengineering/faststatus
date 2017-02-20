@@ -33,7 +33,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt
+					return tt.UTC()
 				}(),
 				FriendlyName: "First One",
 			},
@@ -46,7 +46,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt
+					return tt.UTC()
 				}(),
 				FriendlyName: "First One",
 			},
@@ -59,7 +59,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt
+					return tt.UTC()
 				}(),
 				FriendlyName: "First One",
 			},
@@ -72,7 +72,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt
+					return tt.UTC()
 				}(),
 				FriendlyName: "First One",
 			},
@@ -85,7 +85,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
-					return tt
+					return tt.UTC()
 				}(),
 				FriendlyName: "First One",
 			},
@@ -98,7 +98,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Free,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:15:00-07:00")
-					return tt
+					return tt.UTC()
 				}(),
 				FriendlyName: "First One",
 			},
@@ -117,7 +117,7 @@ func TestSave(t *testing.T) {
 }
 
 func TestSaveIsIdempotent(t *testing.T) {
-	// use a behavioral test for this
+	// use a behavioral test for this (requires some way of checking)
 }
 
 func TestSaveIsConcurrencySafe(t *testing.T) {
@@ -129,6 +129,97 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 	// Save should store only the version of a resource with the highest timestamp,
 	// regardless the order of arrival. This test should focus on concurrent saves
 	// (sequential saves are covered in the table test above)
+}
+
+func TestGet(t *testing.T) {
+	db, cleanup := newEmptyDB(t)
+	defer cleanup()
+
+	stockResources := map[string]faststatus.Resource{
+		"valid": faststatus.Resource{
+			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "First One",
+		},
+		"not-found": faststatus.Resource{
+			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+			Status: faststatus.Busy,
+			Since: func() time.Time {
+				tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
+				return tt.UTC()
+			}(),
+			FriendlyName: "First One",
+		},
+	}
+
+	if err := (&store.Store{DB: db}).Save(stockResources["valid"]); err != nil {
+		t.Fatalf("saving stock resource for test: %+v", err)
+	}
+
+	testCases := []struct {
+		name         string
+		store        *store.Store
+		id           faststatus.ID
+		wantErr      bool
+		wantResource faststatus.Resource
+	}{
+		{"Get should return an error if the store is nil",
+			nil,
+			stockResources["valid"].ID,
+			true,
+			faststatus.Resource{},
+		},
+		{"Get should return an error if the database is not initialized",
+			&store.Store{},
+			stockResources["valid"].ID,
+			true,
+			faststatus.Resource{},
+		},
+		{"Get should return an error for a zero-value ID",
+			&store.Store{DB: db},
+			faststatus.ID{},
+			true,
+			faststatus.Resource{},
+		},
+		{"Get should return a valid Resource with the input ID",
+			&store.Store{DB: db},
+			stockResources["valid"].ID,
+			false,
+			stockResources["valid"],
+		},
+		{"Get should return a zero-value Resource when none found",
+			&store.Store{DB: db},
+			stockResources["not-found"].ID,
+			false,
+			faststatus.Resource{},
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			gotResource, err := tc.store.Get(tc.id)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("%+v.Get(%+v) = <Resource> %+v, expected error? %+v", tc.store, tc.id, err, tc.wantErr)
+			}
+			if gotResource != tc.wantResource {
+				t.Fatalf("%+v.Get(%+v) = %+v <error>, expected %+v", tc.store, tc.id, gotResource, tc.wantResource)
+			}
+		})
+	}
+}
+
+func TestGetIsConcurrencySafe(t *testing.T) {
+	// Get should be concurrency safe
+	// * special test case
+}
+
+func TestGetIsIdempotent(t *testing.T) {
+	// Get should be idempotent
+	// * a behavioral test should work for this
 }
 
 func newEmptyDB(t *testing.T) (*bolt.DB, func()) {

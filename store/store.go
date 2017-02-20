@@ -19,23 +19,23 @@ type Store struct {
 // Save persists a Resource to the Store iff it is the most recent
 func (s *Store) Save(r faststatus.Resource) error {
 	if s == nil {
-		return fmt.Errorf("store not initialized")
+		return errorStoreNotInitialized
 	}
 	if s.DB == nil {
-		return fmt.Errorf("no bolt database for store")
+		return errorDBNotInitialized
 	}
-	var zeroID = faststatus.ID{}
-	if r.ID == zeroID {
+	if r.ID == (faststatus.ID{}) {
 		return fmt.Errorf("cannot save a resource with a zero-value ID")
 	}
-	err := s.DB.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte("faststatus/store"))
+	key, err := r.ID.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("marshaling binary key from resource ID: %+v", err)
+	}
+
+	err = s.DB.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil {
 			return fmt.Errorf("creating bucket: %+v", err)
-		}
-		key, err := r.ID.MarshalBinary()
-		if err != nil {
-			return fmt.Errorf("marshaling binary key from resource ID: %+v", err)
 		}
 
 		latest := b.Get(key)
@@ -63,3 +63,48 @@ func (s *Store) Save(r faststatus.Resource) error {
 	}
 	return nil
 }
+
+func (s *Store) Get(id faststatus.ID) (faststatus.Resource, error) {
+	if s == nil {
+		return faststatus.Resource{}, errorStoreNotInitialized
+	}
+	if s.DB == nil {
+		return faststatus.Resource{}, errorDBNotInitialized
+	}
+	if id == (faststatus.ID{}) {
+		return faststatus.Resource{}, fmt.Errorf("cannot get a resource with a zero-value ID")
+	}
+	key, err := id.MarshalBinary()
+	if err != nil {
+		return faststatus.Resource{}, fmt.Errorf("failed to marshal key from id: %+v", err)
+	}
+
+	r := new(faststatus.Resource)
+	err = s.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketName)
+		if b == nil {
+			return nil
+		}
+		raw := b.Get(key)
+		if len(raw) == 0 {
+			return nil
+		}
+		if err := r.UnmarshalText(raw); err != nil {
+			return fmt.Errorf("unmarshaling resource from stored value: %+v", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return faststatus.Resource{}, fmt.Errorf("viewing database with resource: %+v", err)
+	}
+	return *r, nil
+}
+
+var (
+	errorStoreNotInitialized = fmt.Errorf("store not initialized")
+	errorDBNotInitialized    = fmt.Errorf("no bolt database for store")
+)
+
+var (
+	bucketName = []byte("faststatus/store")
+)
