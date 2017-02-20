@@ -34,7 +34,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt.UTC()
+					return tt
 				}(),
 				FriendlyName: "First One",
 			},
@@ -47,7 +47,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt.UTC()
+					return tt
 				}(),
 				FriendlyName: "First One",
 			},
@@ -60,7 +60,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt.UTC()
+					return tt
 				}(),
 				FriendlyName: "First One",
 			},
@@ -73,7 +73,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
-					return tt.UTC()
+					return tt
 				}(),
 				FriendlyName: "First One",
 			},
@@ -86,7 +86,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
-					return tt.UTC()
+					return tt
 				}(),
 				FriendlyName: "First One",
 			},
@@ -99,7 +99,7 @@ func TestSave(t *testing.T) {
 				Status: faststatus.Free,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:15:00-07:00")
-					return tt.UTC()
+					return tt
 				}(),
 				FriendlyName: "First One",
 			},
@@ -128,7 +128,7 @@ func TestSaveIsIdempotent(t *testing.T) {
 		Status: faststatus.Free,
 		Since: func() time.Time {
 			tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-			return tt.UTC()
+			return tt
 		}(),
 		FriendlyName: "First One",
 	}
@@ -160,7 +160,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "First One",
 		},
@@ -169,7 +169,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Free,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Second One",
 		},
@@ -178,7 +178,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Occupied,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Third One",
 		},
@@ -204,7 +204,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "First One",
 		},
@@ -230,7 +230,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Free,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Another One",
 		},
@@ -268,7 +268,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			Status: faststatus.Free,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "First One",
 		},
@@ -277,7 +277,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Second One",
 		},
@@ -286,7 +286,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			Status: faststatus.Occupied,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:02-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Third One",
 		},
@@ -295,7 +295,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			Status: faststatus.Free,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:03-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Fourth One",
 		},
@@ -304,7 +304,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:04-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Last One",
 		},
@@ -342,7 +342,7 @@ func TestGet(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "First One",
 		},
@@ -351,7 +351,7 @@ func TestGet(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "First One",
 		},
@@ -425,7 +425,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "First One",
 		},
@@ -434,7 +434,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Free,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Second One",
 		},
@@ -443,7 +443,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Occupied,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Third One",
 		},
@@ -452,7 +452,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Busy,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "First One",
 		},
@@ -461,7 +461,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			Status: faststatus.Free,
 			Since: func() time.Time {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
-				return tt.UTC()
+				return tt
 			}(),
 			FriendlyName: "Another One",
 		},
@@ -505,7 +505,7 @@ func TestGetIsIdempotent(t *testing.T) {
 		Status: faststatus.Free,
 		Since: func() time.Time {
 			tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-			return tt.UTC()
+			return tt
 		}(),
 		FriendlyName: "First One",
 	}
