@@ -686,3 +686,130 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestResourceEqual(t *testing.T) {
+	testCases := []struct {
+		name     string
+		resource Resource
+		change   func(Resource) Resource
+		want     bool
+	}{
+		{"zero value and zero value",
+			Resource{},
+			func(r Resource) Resource { return Resource{} },
+			true,
+		},
+		{"real value and self value",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			func(r Resource) Resource { return r },
+			true,
+		},
+		{"change in ID",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			func(r Resource) Resource {
+				r.ID = ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01}
+				return r
+			},
+			false,
+		},
+		{"change in Status",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			func(r Resource) Resource {
+				r.Status = Free
+				return r
+			},
+			false,
+		},
+		{"change in FriendlyName",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			func(r Resource) Resource {
+				r.FriendlyName = "Second Resource"
+				return r
+			},
+			false,
+		},
+		{"change in Since time",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			func(r Resource) Resource {
+				r.Since = r.Since.Add(time.Minute)
+				return r
+			},
+			false,
+		},
+		{"change in Since location (actual time does not change)",
+			Resource{
+				ID:     ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: Busy,
+				Since: func() time.Time {
+					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
+					return tt
+				}(),
+				FriendlyName: "First One",
+			},
+			func(r Resource) Resource {
+				r.Since = r.Since.UTC()
+				return r
+			},
+			true,
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			other := tc.change(tc.resource)
+			got := tc.resource.Equal(other)
+			if got != tc.want {
+				t.Fatalf("%+v.Equal(%+v) = %+v, expected %+v", tc.resource, other, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResourceEqualCommutative(t *testing.T) {
+	f := func(a, b Resource) bool {
+		return a.Equal(b) == b.Equal(a) && a.Equal(a) && b.Equal(b)
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}

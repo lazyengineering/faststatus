@@ -19,6 +19,21 @@ type Resource struct {
 	FriendlyName string
 }
 
+// Equal allows quick equality comparison for two resource values.
+// Use this instead of the equality operator because a Resource contains
+// a `time.Time` value, which cannot be compared with confidence.
+func (r Resource) Equal(other Resource) bool {
+	switch {
+	case r.ID != other.ID,
+		r.Status != other.Status,
+		r.FriendlyName != other.FriendlyName,
+		!r.Since.Equal(other.Since):
+		return false
+	default:
+		return true
+	}
+}
+
 // String will return a single-line representation of a valid resource.
 // In order to optimize for standard streams, the output is as follows:
 //   {{ID}} {{Status}} {{Since}} {{FriendlyName}}
