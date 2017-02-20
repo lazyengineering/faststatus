@@ -681,7 +681,7 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 				t.Fatalf("json.Unmarshal(json.Marshal(%+v)) = %+v, expected error? %+v", tc.resource, err, tc.wantError)
 			}
 			if !reflect.DeepEqual(actual, tc.wantResource) {
-				t.Fatalf("json.Unmarshal(json.Marshal(%+v)) = <error>, expected %+v", tc.resource, actual, tc.wantResource)
+				t.Fatalf("json.Unmarshal(json.Marshal(%+v)) = <error>, got %+v, expected %+v", tc.resource, actual, tc.wantResource)
 			}
 		})
 	}
