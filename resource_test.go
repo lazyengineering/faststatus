@@ -373,22 +373,7 @@ func TestResourceMarshalUnmarshalText(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		switch {
-		case got.ID != r.ID:
-			t.Logf("ID got %+v, expected %+v", got.ID, r.ID)
-			return false
-		case got.Status != r.Status:
-			t.Logf("Status got %+v, expected %+v", got.Status, r.Status)
-			return false
-		case !got.Since.Equal(r.Since):
-			t.Logf("Since got %+v, expectected %+v", got.Since, r.Since)
-			return false
-		case got.FriendlyName != r.FriendlyName:
-			t.Logf("FriendlyName got %+v, expected %+v", got.FriendlyName, r.FriendlyName)
-			return false
-		default:
-			return true
-		}
+		return got.Equal(r)
 	}
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
@@ -641,22 +626,7 @@ func TestResourceMarshalUnmarshalJSON(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		switch {
-		case got.ID != r.ID:
-			t.Logf("ID got %+v, expected %+v", got.ID, r.ID)
-			return false
-		case got.Status != r.Status:
-			t.Logf("Status got %+v, expected %+v", got.Status, r.Status)
-			return false
-		case !got.Since.Equal(r.Since):
-			t.Logf("Since got %+v, expectected %+v", got.Since, r.Since)
-			return false
-		case got.FriendlyName != r.FriendlyName:
-			t.Logf("FriendlyName got %+v, expected %+v", got.FriendlyName, r.FriendlyName)
-			return false
-		default:
-			return true
-		}
+		return got.Equal(r)
 	}
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)

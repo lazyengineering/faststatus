@@ -142,7 +142,7 @@ func TestSaveIsIdempotent(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error getting final resource: %+v", err)
 		}
-		if got != r {
+		if !got.Equal(r) {
 			t.Fatalf("getting resource for the %d time: got %+v, expected %+v", i+1, got, r)
 		}
 	}
@@ -327,7 +327,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error getting final resource: %+v", err)
 	}
-	if got != testResources["final"] {
+	if !got.Equal(testResources["final"]) {
 		t.Fatalf("getting final resource: got %+v, expected %+v", got, testResources["final"])
 	}
 }
@@ -406,7 +406,7 @@ func TestGet(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("%+v.Get(%+v) = <Resource> %+v, expected error? %+v", tc.store, tc.id, err, tc.wantErr)
 			}
-			if gotResource != tc.wantResource {
+			if !gotResource.Equal(tc.wantResource) {
 				t.Fatalf("%+v.Get(%+v) = %+v <error>, expected %+v", tc.store, tc.id, gotResource, tc.wantResource)
 			}
 		})
@@ -485,7 +485,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			if err != nil {
 				t.Fatalf("no errors expected for concurrency test: %+v", err)
 			}
-			if got != r {
+			if !got.Equal(r) {
 				t.Fatalf("getting test resource from store: got %+v, expected %+v", got, r)
 			}
 		}(r)
@@ -519,7 +519,7 @@ func TestGetIsIdempotent(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error getting final resource: %+v", err)
 		}
-		if got != r {
+		if !got.Equal(r) {
 			t.Fatalf("getting resource for the %d time: got %+v, expected %+v", i+1, got, r)
 		}
 	}
