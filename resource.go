@@ -118,7 +118,7 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(tmpResource)
 }
 
-// UnmarshalJson will populate a Resource with data from a json struct
+// UnmarshalJSON will populate a Resource with data from a json struct
 // according to the same format as MarshalJSON. Will overwrite any values
 // already assigned to the Resource.
 func (r *Resource) UnmarshalJSON(raw []byte) error {

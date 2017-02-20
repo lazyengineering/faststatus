@@ -64,6 +64,8 @@ func (s *Store) Save(r faststatus.Resource) error {
 	return nil
 }
 
+// Get returns the most recent state of the Resource with the given valid ID
+// or a zero-value Resource if it does not exist in the Store.
 func (s *Store) Get(id faststatus.ID) (faststatus.Resource, error) {
 	if s == nil {
 		return faststatus.Resource{}, errorStoreNotInitialized

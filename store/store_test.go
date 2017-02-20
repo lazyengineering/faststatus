@@ -155,7 +155,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 	s := &store.Store{DB: db}
 
 	testResources := []faststatus.Resource{
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Busy,
 			Since: func() time.Time {
@@ -164,7 +164,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "First One",
 		},
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
 			Status: faststatus.Free,
 			Since: func() time.Time {
@@ -173,7 +173,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "Second One",
 		},
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
 			Status: faststatus.Occupied,
 			Since: func() time.Time {
@@ -182,7 +182,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "Third One",
 		},
-		faststatus.Resource{
+		{
 			ID: faststatus.ID{
 				0x67,
 				0x89,
@@ -208,7 +208,7 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "First One",
 		},
-		faststatus.Resource{
+		{
 			ID: faststatus.ID{
 				0x89,
 				0xab,
@@ -263,7 +263,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 	s := &store.Store{DB: db}
 
 	testResources := map[string]faststatus.Resource{
-		"first": faststatus.Resource{
+		"first": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Free,
 			Since: func() time.Time {
@@ -272,7 +272,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			}(),
 			FriendlyName: "First One",
 		},
-		"second": faststatus.Resource{
+		"second": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Busy,
 			Since: func() time.Time {
@@ -281,7 +281,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			}(),
 			FriendlyName: "Second One",
 		},
-		"third": faststatus.Resource{
+		"third": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Occupied,
 			Since: func() time.Time {
@@ -290,7 +290,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			}(),
 			FriendlyName: "Third One",
 		},
-		"fourth": faststatus.Resource{
+		"fourth": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Free,
 			Since: func() time.Time {
@@ -299,7 +299,7 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 			}(),
 			FriendlyName: "Fourth One",
 		},
-		"final": faststatus.Resource{
+		"final": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Busy,
 			Since: func() time.Time {
@@ -337,7 +337,7 @@ func TestGet(t *testing.T) {
 	defer cleanup()
 
 	stockResources := map[string]faststatus.Resource{
-		"valid": faststatus.Resource{
+		"valid": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Busy,
 			Since: func() time.Time {
@@ -346,7 +346,7 @@ func TestGet(t *testing.T) {
 			}(),
 			FriendlyName: "First One",
 		},
-		"not-found": faststatus.Resource{
+		"not-found": {
 			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
 			Status: faststatus.Busy,
 			Since: func() time.Time {
@@ -420,7 +420,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 	s := &store.Store{DB: db}
 
 	testResources := []faststatus.Resource{
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 			Status: faststatus.Busy,
 			Since: func() time.Time {
@@ -429,7 +429,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "First One",
 		},
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
 			Status: faststatus.Free,
 			Since: func() time.Time {
@@ -438,7 +438,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "Second One",
 		},
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
 			Status: faststatus.Occupied,
 			Since: func() time.Time {
@@ -447,7 +447,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "Third One",
 		},
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
 			Status: faststatus.Busy,
 			Since: func() time.Time {
@@ -456,7 +456,7 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 			}(),
 			FriendlyName: "First One",
 		},
-		faststatus.Resource{
+		{
 			ID:     faststatus.ID{0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67},
 			Status: faststatus.Free,
 			Since: func() time.Time {

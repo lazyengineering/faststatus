@@ -245,22 +245,22 @@ func TestStatusString(t *testing.T) {
 		Status   Status
 	}
 	tests := []stringTest{
-		stringTest{ // Zero Value
+		{ // Zero Value
 			Expected: "free",
 		},
-		stringTest{ // Free
+		{ // Free
 			Expected: "free",
 			Status:   Free,
 		},
-		stringTest{ // Busy
+		{ // Busy
 			Expected: "busy",
 			Status:   Busy,
 		},
-		stringTest{ // Occupied
+		{ // Occupied
 			Expected: "occupied",
 			Status:   Occupied,
 		},
-		stringTest{ // Out of Range
+		{ // Out of Range
 			Expected: "free",
 			Status:   Occupied + 1,
 		},

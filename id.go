@@ -9,11 +9,11 @@ import (
 	"fmt"
 )
 
-// A UUIDv4 compatible byte array. Implementation is based on
+// ID is a UUIDv4 compatible byte array. Implementation is based on
 // portions of github.com/satori/go.uuid.
 type ID [16]byte
 
-// Generate a new version 4 UUID. Returns errors from reading the
+// NewID generates a new version 4 UUID. Returns errors from reading the
 // entropy source.
 func NewID() (ID, error) {
 	id := ID{}
