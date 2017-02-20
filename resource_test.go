@@ -804,3 +804,12 @@ func TestResourceEqual(t *testing.T) {
 		})
 	}
 }
+
+func TestResourceEqualCommutative(t *testing.T) {
+	f := func(a, b Resource) bool {
+		return a.Equal(b) == b.Equal(a) && a.Equal(a) && b.Equal(b)
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
