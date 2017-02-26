@@ -1,23 +1,19 @@
 // Copyright 2016-2017 Jesse Allen. All rights reserved
 // Released under the MIT license found in the LICENSE file.
 
-package faststatus
+package faststatus_test
 
 import (
 	"bytes" // because we explicitly want to work with the standard library json package
-	"math/rand"
 	"reflect"
 	"testing"
 	"testing/quick"
+
+	"github.com/lazyengineering/faststatus"
 )
 
-// Generate is used in testing to generate only valid Status values
-func (s Status) Generate(rand *rand.Rand, size int) reflect.Value {
-	return reflect.ValueOf(Status(rand.Int() % int(Occupied)))
-}
-
 func TestStatusMarshalBinary(t *testing.T) {
-	isOneByteWithNoError := func(s Status) bool {
+	isOneByteWithNoError := func(s faststatus.Status) bool {
 		b, err := s.MarshalBinary()
 		return err == nil && len(b) == 1
 	}
@@ -28,10 +24,10 @@ func TestStatusMarshalBinary(t *testing.T) {
 
 func TestStatusUnmarshalBinary(t *testing.T) {
 	f := func(b []byte) bool {
-		s := new(Status)
+		s := new(faststatus.Status)
 		err := s.UnmarshalBinary(b)
 		if len(b) == 1 {
-			return (err != nil) == (b[0] > byte(Occupied))
+			return (err != nil) == (b[0] > byte(faststatus.Occupied))
 		}
 		return err != nil
 	}
@@ -41,13 +37,13 @@ func TestStatusUnmarshalBinary(t *testing.T) {
 }
 
 func TestStatusMarshalUnmarshalBinary(t *testing.T) {
-	f := func(s Status) bool {
+	f := func(s faststatus.Status) bool {
 		b, err := s.MarshalBinary()
 		if err != nil {
 			t.Logf("marshaling binary from status: %+v", err)
 			return false
 		}
-		gotStatus := new(Status)
+		gotStatus := new(faststatus.Status)
 		err = gotStatus.UnmarshalBinary(b)
 		if err != nil {
 			t.Logf("unmarshaling binary from status: %+v", err)
@@ -63,7 +59,7 @@ func TestStatusMarshalUnmarshalBinary(t *testing.T) {
 func TestStatusMarshalText(t *testing.T) {
 	tests := []struct {
 		name                  string
-		status                Status
+		status                faststatus.Status
 		wantBytes             []byte
 		wantError             bool
 		wantErrorIsOutOfRange bool
@@ -75,25 +71,25 @@ func TestStatusMarshalText(t *testing.T) {
 			false,
 		},
 		{"free",
-			Free,
+			faststatus.Free,
 			[]byte("free"),
 			false,
 			false,
 		},
 		{"busy",
-			Busy,
+			faststatus.Busy,
 			[]byte("busy"),
 			false,
 			false,
 		},
 		{"occupied",
-			Occupied,
+			faststatus.Occupied,
 			[]byte("occupied"),
 			false,
 			false,
 		},
 		{"out of range",
-			Occupied + 1,
+			faststatus.Occupied + 1,
 			nil,
 			true,
 			true,
@@ -106,7 +102,7 @@ func TestStatusMarshalText(t *testing.T) {
 			if (err == nil) == tc.wantError {
 				t.Fatalf("%+v.MarshalText() = []byte, %+v, expected error? %+v", tc.status, err, tc.wantError)
 			}
-			if IsOutOfRange(err) != tc.wantErrorIsOutOfRange {
+			if faststatus.IsOutOfRange(err) != tc.wantErrorIsOutOfRange {
 				t.Fatalf("%+v.MarshalText() = []byte, %+v, expected error out of range? %+v", tc.status, err, tc.wantErrorIsOutOfRange)
 			}
 			if !bytes.Equal(b, tc.wantBytes) {
@@ -120,94 +116,94 @@ func TestStatusUnmarshalText(t *testing.T) {
 	testCases := []struct {
 		text       []byte
 		wantError  bool
-		wantStatus Status
+		wantStatus faststatus.Status
 	}{
 		{nil,
 			true,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte(""),
 			true,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("Free"),
 			false,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("Busy"),
 			false,
-			Busy,
+			faststatus.Busy,
 		},
 		{[]byte("Occupied"),
 			false,
-			Occupied,
+			faststatus.Occupied,
 		},
 		{[]byte("free"),
 			false,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("busy"),
 			false,
-			Busy,
+			faststatus.Busy,
 		},
 		{[]byte("occupied"),
 			false,
-			Occupied,
+			faststatus.Occupied,
 		},
 		{[]byte("FREE"),
 			false,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("BUSY"),
 			false,
-			Busy,
+			faststatus.Busy,
 		},
 		{[]byte("OCCUPIED"),
 			false,
-			Occupied,
+			faststatus.Occupied,
 		},
 		{[]byte("fReE"),
 			false,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("bUsY"),
 			false,
-			Busy,
+			faststatus.Busy,
 		},
 		{[]byte("oCcUpIeD"),
 			false,
-			Occupied,
+			faststatus.Occupied,
 		},
 		{[]byte("0"),
 			false,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("1"),
 			false,
-			Busy,
+			faststatus.Busy,
 		},
 		{[]byte("2"),
 			false,
-			Occupied,
+			faststatus.Occupied,
 		},
 		{[]byte("foo"),
 			true,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("freedom"),
 			true,
-			Free,
+			faststatus.Free,
 		},
 		{[]byte("busyness"),
 			true,
-			Free,
+			faststatus.Free,
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(string(tc.text), func(t *testing.T) {
-			var s = new(Status)
+			var s = new(faststatus.Status)
 			err := s.UnmarshalText(tc.text)
 			if (err != nil) != tc.wantError {
 				t.Fatalf("%+v.UnmarshalText(%+v) = %+v, expected error? %+v", *s, tc.text, err, tc.wantError)
@@ -220,13 +216,13 @@ func TestStatusUnmarshalText(t *testing.T) {
 }
 
 func TestStatusMarshalUnmarshalText(t *testing.T) {
-	f := func(s Status) bool {
+	f := func(s faststatus.Status) bool {
 		txt, err := s.MarshalText()
 		if err != nil {
 			t.Logf("marshaling text from status: %+v", err)
 			return false
 		}
-		gotStatus := new(Status)
+		gotStatus := new(faststatus.Status)
 		err = gotStatus.UnmarshalText(txt)
 		if err != nil {
 			t.Logf("unmarshaling text from status: %+v", err)
@@ -242,7 +238,7 @@ func TestStatusMarshalUnmarshalText(t *testing.T) {
 func TestStatusString(t *testing.T) {
 	type stringTest struct {
 		Expected string
-		Status   Status
+		Status   faststatus.Status
 	}
 	tests := []stringTest{
 		{ // Zero Value
@@ -250,19 +246,19 @@ func TestStatusString(t *testing.T) {
 		},
 		{ // Free
 			Expected: "free",
-			Status:   Free,
+			Status:   faststatus.Free,
 		},
 		{ // Busy
 			Expected: "busy",
-			Status:   Busy,
+			Status:   faststatus.Busy,
 		},
 		{ // Occupied
 			Expected: "occupied",
-			Status:   Occupied,
+			Status:   faststatus.Occupied,
 		},
 		{ // Out of Range
 			Expected: "free",
-			Status:   Occupied + 1,
+			Status:   faststatus.Occupied + 1,
 		},
 	}
 	for _, st := range tests {

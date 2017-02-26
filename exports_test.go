@@ -70,3 +70,8 @@ func (r Resource) Generate(rgen *rand.Rand, size int) reflect.Value {
 
 	return reflect.ValueOf(rr)
 }
+
+// Generate is used in testing to generate only valid Status values
+func (s Status) Generate(rand *rand.Rand, size int) reflect.Value {
+	return reflect.ValueOf(Status(rand.Int() % int(Occupied)))
+}
