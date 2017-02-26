@@ -14,7 +14,6 @@ import (
 	"github.com/lazyengineering/faststatus"
 )
 
-// Expects [ID] [Status] [Since] [FriendlyName]
 func TestResourceString(t *testing.T) {
 	testCases := []struct {
 		name     string

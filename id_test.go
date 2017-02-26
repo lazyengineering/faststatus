@@ -90,7 +90,6 @@ func TestIDUnmarshalMarshalBinary(t *testing.T) {
 }
 
 func TestIDMarshalTextIs36Bytes(t *testing.T) {
-	// is 36 bytes
 	is36bytes := func(id faststatus.ID) bool {
 		s, err := id.MarshalText()
 		return err == nil && len(s) == 36
@@ -101,7 +100,6 @@ func TestIDMarshalTextIs36Bytes(t *testing.T) {
 }
 
 func TestIDMarshalTextIsValidChars(t *testing.T) {
-	// contains only lowercase hex and dashes
 	onlyHexAndDashes := func(id faststatus.ID) bool {
 		s, err := id.MarshalText()
 		if err != nil {
@@ -122,7 +120,6 @@ func TestIDMarshalTextIsValidChars(t *testing.T) {
 }
 
 func TestIDMarshalTextHasCorrectDashes(t *testing.T) {
-	// contains dashes where expected
 	dashesWhereExpected := func(id faststatus.ID) bool {
 		s, err := id.MarshalText()
 		if err != nil {
