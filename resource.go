@@ -86,7 +86,7 @@ func (r Resource) MarshalText() ([]byte, error) {
 
 // UnmarshalText decodes a Resource from a line of text. This matches the
 // output of the `MarshalText` method. Partial matches are only accepted missing
-// `FriendlyName` or `FriendlyName` and `Since`.
+// `FriendlyName`.
 func (r *Resource) UnmarshalText(txt []byte) error {
 	elements := bytes.Split(txt, []byte(" "))
 
@@ -140,12 +140,11 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 // according to the same format as MarshalJSON. Will overwrite any values
 // already assigned to the Resource.
 func (r *Resource) UnmarshalJSON(raw []byte) error {
-	// allow zero values with omitempty
 	tmp := new(struct {
-		ID           ID        `json:",omitempty"`
-		Status       Status    `json:",omitempty"`
-		Since        time.Time `json:",omitempty"`
-		FriendlyName string    `json:",omitempty"`
+		ID           ID
+		Status       Status
+		Since        time.Time
+		FriendlyName string `json:",omitempty"`
 	})
 	if err := json.Unmarshal(raw, tmp); err != nil {
 		return err
