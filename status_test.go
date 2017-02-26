@@ -236,34 +236,37 @@ func TestStatusMarshalUnmarshalText(t *testing.T) {
 }
 
 func TestStatusString(t *testing.T) {
-	type stringTest struct {
-		Expected string
-		Status   faststatus.Status
+	testCases := []struct {
+		name     string
+		expected string
+		status   faststatus.Status
+	}{
+		{name: "Zero Value",
+			expected: "free",
+		},
+		{name: "Free",
+			expected: "free",
+			status:   faststatus.Free,
+		},
+		{name: "Busy",
+			expected: "busy",
+			status:   faststatus.Busy,
+		},
+		{name: "Occupied",
+			expected: "occupied",
+			status:   faststatus.Occupied,
+		},
+		{name: "Out of Range",
+			expected: "free",
+			status:   faststatus.Occupied + 1,
+		},
 	}
-	tests := []stringTest{
-		{ // Zero Value
-			Expected: "free",
-		},
-		{ // Free
-			Expected: "free",
-			Status:   faststatus.Free,
-		},
-		{ // Busy
-			Expected: "busy",
-			Status:   faststatus.Busy,
-		},
-		{ // Occupied
-			Expected: "occupied",
-			Status:   faststatus.Occupied,
-		},
-		{ // Out of Range
-			Expected: "free",
-			Status:   faststatus.Occupied + 1,
-		},
-	}
-	for _, st := range tests {
-		if actual := st.Status.String(); actual != st.Expected {
-			t.Error("\nexpected:\t", st.Expected, "\n  actual:\t", actual)
-		}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if actual := tc.status.String(); actual != tc.expected {
+				t.Fatalf("%#v.String() = %s, expected %s", tc.status, actual, tc.expected)
+			}
+		})
 	}
 }
