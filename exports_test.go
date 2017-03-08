@@ -75,3 +75,5 @@ func (r Resource) Generate(rgen *rand.Rand, size int) reflect.Value {
 func (s Status) Generate(rand *rand.Rand, size int) reflect.Value {
 	return reflect.ValueOf(Status(rand.Int() % int(Occupied)))
 }
+
+const BinaryVersion = binaryVersion

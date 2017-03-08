@@ -697,3 +697,148 @@ func TestResourceEqualCommutative(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestResourceMarshalBinaryHasMagicBytes(t *testing.T) {
+	f := func(r faststatus.Resource) bool {
+		b, _ := r.MarshalBinary()
+		return len(b) >= 2 && bytes.Equal(b[0:2], faststatus.MagicBytes[:])
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResourceMarshalBinaryVersionByte(t *testing.T) {
+	f := func(r faststatus.Resource) bool {
+		b, _ := r.MarshalBinary()
+		return len(b) >= 3 && b[2] == faststatus.BinaryVersion
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResourceMarshalBinaryLengthByte(t *testing.T) {
+	f := func(r faststatus.Resource) bool {
+		b, _ := r.MarshalBinary()
+		return len(b) >= 4 && uint8(b[3]) == uint8(len(r.FriendlyName))
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResourceMarshalBinaryLength(t *testing.T) {
+	f := func(r faststatus.Resource) bool {
+		b, _ := r.MarshalBinary()
+		return len(b) == 4+32+len(r.FriendlyName)
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResourceUnmarshalBinaryBadData(t *testing.T) {
+	testCases := []struct {
+		name  string
+		input []byte
+	}{
+		{"nil",
+			nil,
+		},
+		{"empty",
+			[]byte{},
+		},
+		{"bad magic bytes",
+			func() []byte {
+				b := make([]byte, 36)
+				copy(b[0:4], []byte{0x47, 0x49, 0x46, 0x38}) // this would be a GIF
+				return b
+			}(),
+		},
+		{"version too high",
+			func() []byte {
+				var b = make([]byte, 36)
+				copy(b, faststatus.MagicBytes[:])
+				b[2] = byte(uint(faststatus.BinaryVersion) + 1)
+				return b
+			}(),
+		},
+		{"truncated data",
+			func() []byte {
+				b, _ := faststatus.Resource{
+					ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+					Status: faststatus.Free,
+					Since: func() time.Time {
+						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+						return tt
+					}(),
+					FriendlyName: "Second One",
+				}.MarshalBinary()
+				return b[0 : len(b)-5]
+			}(),
+		},
+		{"bad status bytes",
+			func() []byte {
+				b, _ := faststatus.Resource{
+					ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+					Status: faststatus.Free,
+					Since: func() time.Time {
+						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+						return tt
+					}(),
+					FriendlyName: "Second One",
+				}.MarshalBinary()
+				b[20] = 17
+				return b
+			}(),
+		},
+		{"bad time bytes",
+			func() []byte {
+				b, _ := faststatus.Resource{
+					ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+					Status: faststatus.Free,
+					Since: func() time.Time {
+						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+						return tt
+					}(),
+					FriendlyName: "Second One",
+				}.MarshalBinary()
+				b[21] = 17
+				return b
+			}(),
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var r = new(faststatus.Resource)
+			err := r.UnmarshalBinary(tc.input)
+			if err == nil {
+				t.Fatalf("Resource.UnmarshalBinary(%v) = %v, expected error", tc.input, err)
+			}
+		})
+	}
+}
+
+func TestResourceMarshalUnmarshalBinaryQuick(t *testing.T) {
+	f := func(r faststatus.Resource) bool {
+		b, err := r.MarshalBinary()
+		if err != nil {
+			return false
+		}
+		got := new(faststatus.Resource)
+		err = got.UnmarshalBinary(b)
+		if err != nil {
+			return false
+		}
+		if !got.Equal(r) {
+			t.Logf("Unmarshal(Marshal(%+v)) = %+v", r, got)
+			return false
+		}
+		return true
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}

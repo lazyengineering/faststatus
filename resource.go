@@ -159,3 +159,82 @@ func (r *Resource) UnmarshalJSON(raw []byte) error {
 	}
 	return nil
 }
+
+const binaryVersion = 0x00
+
+// MagicBytes are the first two bytes of the portable binary representation of a Resource.
+var MagicBytes = [2]byte{0x90, 0xe9}
+
+// MarshalBinary returns a portable binary version of a Resource.
+// The resulting binary must contain a header with MagicBytes (0x09 0xe9),
+// a version byte, and a single byte with the length of the FriendlyName.
+func (r Resource) MarshalBinary() ([]byte, error) {
+	nameLen := len(r.FriendlyName)
+	b := make([]byte, 4+32+nameLen)
+
+	if n := copy(b[0:2], MagicBytes[:]); n != 2 {
+		return nil, fmt.Errorf("unable to copy correct magic bytes")
+	}
+	b[2] = binaryVersion
+	b[3] = byte(uint8(nameLen))
+
+	id, err := r.ID.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("marshaling ID to binary: %+v", err)
+	}
+	copy(b[4:20], id)
+
+	status, err := r.Status.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("marshaling Status to binary: %+v", err)
+	}
+	copy(b[20:21], status)
+
+	since, err := r.Since.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("marshaling Since to binary: %+v", err)
+	}
+	copy(b[21:36], since)
+
+	copy(b[36:], []byte(r.FriendlyName))
+
+	return b, nil
+}
+
+// UnmarshalBinary replaces a Resource with the Resource represented
+// by the binary input. The input binary must match the form of the
+// MarshalBinary method.
+func (r *Resource) UnmarshalBinary(b []byte) error {
+	switch {
+	case len(b) < 36:
+		return fmt.Errorf("input binary data too short")
+	case !bytes.Equal(b[0:2], MagicBytes[:]):
+		return fmt.Errorf("unexpected magic bytes")
+	case b[2] > binaryVersion:
+		return fmt.Errorf("unexpected version number for binary format")
+	default:
+	}
+
+	tmp := Resource{}
+
+	if err := (&tmp.ID).UnmarshalBinary(b[4:20]); err != nil {
+		return fmt.Errorf("parsing ID from binary: %+v", err)
+	}
+
+	if err := (&tmp.Status).UnmarshalBinary(b[20:21]); err != nil {
+		return fmt.Errorf("parsing Status from binary: %+v", err)
+	}
+
+	if err := (&tmp.Since).UnmarshalBinary(b[21:36]); err != nil {
+		return fmt.Errorf("parsing Since from binary: %+v", err)
+	}
+
+	nameLen := int(b[3])
+	if nameLen != len(b[36:]) {
+		return fmt.Errorf("length of FriendlyName does not match expected length")
+	}
+	tmp.FriendlyName = string(b[36:])
+
+	*r = tmp
+	return nil
+}
