@@ -41,15 +41,14 @@ func (s *Store) Save(r faststatus.Resource) error {
 		latest := b.Get(key)
 		if len(latest) > 0 {
 			latestResource := new(faststatus.Resource)
-			if err := latestResource.UnmarshalText(latest); err != nil {
+			if err := latestResource.UnmarshalBinary(latest); err != nil {
 				return fmt.Errorf("unmarshaling latest stored resource: %+v", err)
 			}
 			if latestResource.Since.After(r.Since) {
 				return errorMoreRecentVersion
 			}
 		}
-		//TODO: Implement MarshalBinary() for Resource
-		payload, err := r.MarshalText()
+		payload, err := r.MarshalBinary()
 		if err != nil {
 			return fmt.Errorf("marshaling text for resource payload: %+v", err)
 		}
@@ -91,7 +90,7 @@ func (s *Store) Get(id faststatus.ID) (faststatus.Resource, error) {
 		if len(raw) == 0 {
 			return nil
 		}
-		if err := r.UnmarshalText(raw); err != nil {
+		if err := r.UnmarshalBinary(raw); err != nil {
 			return fmt.Errorf("unmarshaling resource from stored value: %+v", err)
 		}
 		return nil
