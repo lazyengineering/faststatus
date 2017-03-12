@@ -842,3 +842,43 @@ func TestResourceMarshalUnmarshalBinaryQuick(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestNewResourceHasAnID(t *testing.T) {
+	hasAnID := func() bool {
+		r := faststatus.NewResource()
+		zeroID := faststatus.ID{}
+		if bytes.Equal(r.ID[:], zeroID[:]) {
+			t.Logf("ID should be non-zero")
+			return false
+		}
+		return true
+	}
+	if err := quick.Check(hasAnID, nil); err != nil {
+		t.Fatalf("has a zero-value ID: %+v", err)
+	}
+}
+
+func TestNewResourceIsMostlyZero(t *testing.T) {
+	isMostlyZero := func() bool {
+		r := faststatus.NewResource()
+		var (
+			zeroStatus faststatus.Status
+		)
+		if r.Status != zeroStatus {
+			t.Logf("status is not zero-value")
+			return false
+		}
+		if !r.Since.IsZero() {
+			t.Logf("since is not zero-value")
+			return false
+		}
+		if r.FriendlyName != "" {
+			t.Logf("friendly name is not zero-value")
+			return false
+		}
+		return true
+	}
+	if err := quick.Check(isMostlyZero, nil); err != nil {
+		t.Fatalf("has non-zero-value properties: %+v", err)
+	}
+}

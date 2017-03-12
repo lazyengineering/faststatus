@@ -19,6 +19,12 @@ type Resource struct {
 	FriendlyName string
 }
 
+// NewResource creates a new Resource with a generated ID and otherwise zero-value properties.
+func NewResource() Resource {
+	id, _ := NewID()
+	return Resource{ID: id}
+}
+
 // Equal allows quick equality comparison for two resource values.
 // Use this instead of the equality operator because a Resource contains
 // a `time.Time` value, which cannot be compared with confidence.
