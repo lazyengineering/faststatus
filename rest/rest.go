@@ -32,8 +32,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/new":
 		s.handleNew(w, r)
-	default:
+	case "/":
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	default:
+		s.handleResource(w, r)
 	}
 }
 
@@ -49,4 +51,7 @@ func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 	w.Write(txt)
+}
+
+func (s *Server) handleResource(w http.ResponseWriter, r *http.Request) {
 }
