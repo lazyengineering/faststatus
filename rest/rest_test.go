@@ -223,6 +223,31 @@ func TestHandlerPutToID(t *testing.T) {
 			t.Fatalf("returned Status Code %03d, expected %03d", w.Code, http.StatusInternalServerError)
 		}
 	})
+
+	t.Run("store Save error", func(t *testing.T) {
+		store := &mockStore{saveFn: func(r faststatus.Resource) error {
+			return fmt.Errorf("an error")
+		}}
+		var s, err = rest.New(rest.WithStore(store))
+		if err != nil {
+			t.Fatalf("unexpected error creating store: %+v", err)
+		}
+
+		resource := faststatus.NewResource()
+		resource.Since = time.Date(2017, 3, 14, 15, 9, 26, 5359, time.UTC)
+		body, _ := resource.MarshalText()
+		id, _ := resource.ID.MarshalText()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPut, "/"+string(id), bytes.NewReader(body))
+		s.ServeHTTP(w, r)
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("returned Status Code %03d, expected %03d", w.Code, http.StatusInternalServerError)
+		}
+		if store.saveCalled != 1 {
+			t.Fatalf("Store Save called %d times, expected exactly once", store.saveCalled)
+		}
+	})
 }
 
 var possibleMethods = []string{
@@ -305,4 +330,21 @@ type errorReader struct{}
 
 func (r errorReader) Read([]byte) (int, error) {
 	return 0, fmt.Errorf("an error")
+}
+
+type mockStore struct {
+	saveCalled int
+	saveFn     func(faststatus.Resource) error
+	getCalled  int
+	getFn      func(faststatus.ID) (faststatus.Resource, error)
+}
+
+func (s *mockStore) Save(r faststatus.Resource) error {
+	s.saveCalled++
+	return s.saveFn(r)
+}
+
+func (s *mockStore) Get(id faststatus.ID) (faststatus.Resource, error) {
+	s.getCalled++
+	return s.getFn(id)
 }

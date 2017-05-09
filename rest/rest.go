@@ -12,6 +12,13 @@ import (
 
 // Server is a restful http server for Resources.
 type Server struct {
+	store Store
+}
+
+// Store gets and saves Resources.
+type Store interface {
+	Save(faststatus.Resource) error
+	Get(faststatus.ID) (faststatus.Resource, error)
 }
 
 // ServerOpt is used to configure a Server
@@ -26,6 +33,14 @@ func New(opts ...ServerOpt) (*Server, error) {
 		}
 	}
 	return s, nil
+}
+
+// WithStore configures a Server to use the provided Store.
+func WithStore(store Store) ServerOpt {
+	return func(s *Server) error {
+		s.store = store
+		return nil
+	}
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -86,6 +101,10 @@ func (s *Server) putResource(id faststatus.ID) http.Handler {
 		}
 		if id != resource.ID {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+		if err := s.store.Save(*resource); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 	})
