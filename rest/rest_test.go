@@ -5,6 +5,7 @@ package rest_test
 
 import (
 	"bytes"
+	"fmt"
 	"math/rand"
 	"mime"
 	"net/http"
@@ -209,6 +210,19 @@ func TestHandlerPutToID(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("body Read error", func(t *testing.T) {
+		id, _ := faststatus.NewID()
+		b, _ := id.MarshalText()
+
+		var s, _ = rest.New()
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPut, "/"+string(b), errorReader{})
+		s.ServeHTTP(w, r)
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("returned Status Code %03d, expected %03d", w.Code, http.StatusInternalServerError)
+		}
+	})
 }
 
 var possibleMethods = []string{
@@ -285,4 +299,10 @@ func genBadBody(r *rand.Rand) []byte {
 	scratch := make([]byte, r.Intn(1000))
 	r.Read(scratch)
 	return scratch
+}
+
+type errorReader struct{}
+
+func (r errorReader) Read([]byte) (int, error) {
+	return 0, fmt.Errorf("an error")
 }
