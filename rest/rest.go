@@ -54,4 +54,14 @@ func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleResource(w http.ResponseWriter, r *http.Request) {
+	var id faststatus.ID
+	if err := (&id).UnmarshalText([]byte(r.URL.Path[1:])); err != nil {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+	case http.MethodPut:
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	}
 }
