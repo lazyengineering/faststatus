@@ -77,18 +77,6 @@ func TestHandlerOnlyValidPathsAndMethods(t *testing.T) {
 	}
 }
 
-var possibleMethods = []string{
-	http.MethodGet,
-	http.MethodHead,
-	http.MethodPut,
-	http.MethodPost,
-	http.MethodPatch,
-	http.MethodDelete,
-}
-var validMethodsByPath = map[string][]string{
-	"/new": []string{http.MethodGet, http.MethodHead},
-}
-
 func TestHandlerGetNew(t *testing.T) {
 	const defaultContentType = "text/plain"
 	var s, _ = rest.New()
