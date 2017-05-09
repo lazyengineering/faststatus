@@ -45,38 +45,35 @@ func TestHandlerOnlyValidPaths(t *testing.T) {
 
 func TestHandlerOnlyValidPathsAndMethods(t *testing.T) {
 	var s, _ = rest.New()
-	isNotAllowed := func(path string) func(string) bool {
-		return func(method string) bool {
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest(method, path, nil)
-			s.ServeHTTP(w, r)
+	isNotAllowed := func(method, path string) bool {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(method, path, nil)
+		s.ServeHTTP(w, r)
 
-			validMethods := validMethodsByPath[path]
-			var isValid bool
-			for _, validMethod := range validMethods {
-				if validMethod == method {
-					isValid = true
-					break
-				}
+		validMethods, _ := validMethodsByPath(path)
+		var isValid bool
+		for _, validMethod := range validMethods {
+			if validMethod == method {
+				isValid = true
+				break
 			}
-			if !isValid && w.Code != http.StatusMethodNotAllowed {
-				t.Logf("%s %q got %03d, expected 405", method, path, w.Code)
-				return false
-			}
-			if isValid && w.Code == http.StatusMethodNotAllowed {
-				t.Logf("%s %q got %03d, expected not 405", method, path, w.Code)
-				return false
-			}
-			return true
 		}
-	}
-	genMethod := func(args []reflect.Value, gen *rand.Rand) {
-		args[0] = reflect.ValueOf(possibleMethods[gen.Intn(len(possibleMethods))])
-	}
-	for path := range validMethodsByPath {
-		if err := quick.Check(isNotAllowed(path), &quick.Config{Values: genMethod}); err != nil {
-			t.Fatalf("unexpected response to bad client request: %+v", err)
+		if !isValid && w.Code != http.StatusMethodNotAllowed {
+			t.Logf("%s %q got %03d, expected 405", method, path, w.Code)
+			return false
 		}
+		if isValid && w.Code == http.StatusMethodNotAllowed {
+			t.Logf("%s %q got %03d, expected not 405", method, path, w.Code)
+			return false
+		}
+		return true
+	}
+	gen := func(args []reflect.Value, r *rand.Rand) {
+		args[0] = reflect.ValueOf(possibleMethods[r.Intn(len(possibleMethods))])
+		args[1] = reflect.ValueOf(genValidPath(r))
+	}
+	if err := quick.Check(isNotAllowed, &quick.Config{Values: gen}); err != nil {
+		t.Fatalf("unexpected response to bad client request: %+v", err)
 	}
 }
 
@@ -171,6 +168,13 @@ func validMethodsByPath(path string) ([]string, bool) {
 		return []string{http.MethodGet, http.MethodHead}, true
 	}
 	return nil, false
+}
+
+func genValidPath(r *rand.Rand) string {
+	pathFuncs := []func() string{
+		func() string { return "/new" },
+	}
+	return pathFuncs[r.Intn(len(pathFuncs))]()
 }
 
 func genInvalidPath(maxLen int, r *rand.Rand) string {
