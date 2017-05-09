@@ -14,6 +14,7 @@ import (
 	"sync"
 	"testing"
 	"testing/quick"
+	"time"
 
 	"github.com/lazyengineering/faststatus"
 	"github.com/lazyengineering/faststatus/rest"
@@ -142,6 +143,74 @@ func TestHandlerGetNew(t *testing.T) {
 	}
 }
 
+func TestHandlerPutToID(t *testing.T) {
+	//TODO(jesse@jessecarl.com): Once the errors can be inspected to identify conflicts, add 409 status
+	//TODO(jesse@jessecarl.com): Content negotiation. For now, everything is text/plain.
+	t.Run("bad requests", func(t *testing.T) {
+		var s, _ = rest.New()
+		rejectsBadRequests := func(path string, body []byte) bool {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(body))
+			s.ServeHTTP(w, r)
+			if w.Code != http.StatusBadRequest {
+				t.Logf("returned Status Code %03d, expected %03d", w.Code, http.StatusBadRequest)
+				return false
+			}
+			return true
+		}
+		testCases := []struct {
+			name   string
+			values func([]reflect.Value, *rand.Rand)
+		}{
+			{"failure to unmarshal",
+				func(val []reflect.Value, r *rand.Rand) {
+					id, _ := faststatus.NewID()
+					b, _ := id.MarshalText()
+					val[0] = reflect.ValueOf("/" + string(b))
+					val[1] = reflect.ValueOf(genBadBody(r))
+				},
+			},
+			{"zero-value Since",
+				func(val []reflect.Value, r *rand.Rand) {
+					resource := faststatus.NewResource()
+					resource.Status = faststatus.Status(r.Intn(2))
+					id, _ := resource.ID.MarshalText()
+					txt, _ := resource.MarshalText()
+					val[0] = reflect.ValueOf("/" + string(id))
+					val[1] = reflect.ValueOf(txt)
+				},
+			},
+			{"id does not match ID in Resource",
+				func(val []reflect.Value, r *rand.Rand) {
+					resource := faststatus.NewResource()
+					resource.Status = faststatus.Status(r.Intn(2))
+					resource.Since = time.Now() // now is random enough..
+					var id faststatus.ID
+					for {
+						id, _ = faststatus.NewID()
+						if id != resource.ID {
+							break
+						}
+					}
+					idTxt, _ := id.MarshalText()
+					txt, _ := resource.MarshalText()
+					val[0] = reflect.ValueOf("/" + string(idTxt))
+					val[1] = reflect.ValueOf(txt)
+				},
+			},
+		}
+		for _, tc := range testCases {
+			tc := tc
+			t.Run(tc.name, func(t *testing.T) {
+				err := quick.Check(rejectsBadRequests, &quick.Config{Values: tc.values})
+				if err != nil {
+					t.Fatalf("failed to reject bad values: %+v", err)
+				}
+			})
+		}
+	})
+}
+
 var possibleMethods = []string{
 	http.MethodGet,
 	http.MethodHead,
@@ -210,4 +279,10 @@ func genPath(maxLen int, r *rand.Rand) string {
 		}
 	}, string(scratch))
 	return path[:maxLen%len(path)]
+}
+
+func genBadBody(r *rand.Rand) []byte {
+	scratch := make([]byte, r.Intn(1000))
+	r.Read(scratch)
+	return scratch
 }
