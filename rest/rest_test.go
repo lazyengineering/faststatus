@@ -155,12 +155,30 @@ func validMethodsByPath(path string) ([]string, bool) {
 	if path == "/new" {
 		return []string{http.MethodGet, http.MethodHead}, true
 	}
-	return nil, false
+	parts := strings.SplitN(path, "/", 3)
+	if len(parts) < 2 {
+		return nil, false
+	}
+	id := new(faststatus.ID)
+	err := id.UnmarshalText([]byte(parts[1]))
+	if err != nil {
+		return nil, false
+	}
+	methods := []string{http.MethodGet, http.MethodHead}
+	if len(parts) < 3 { // no trailing slash (for now)
+		methods = append(methods, http.MethodPut)
+	}
+	return methods, true
 }
 
 func genValidPath(r *rand.Rand) string {
 	pathFuncs := []func() string{
 		func() string { return "/new" },
+		func() string { // base ID
+			id, _ := faststatus.NewID()
+			b, _ := id.MarshalText()
+			return "/" + string(b)
+		},
 	}
 	return pathFuncs[r.Intn(len(pathFuncs))]()
 }
