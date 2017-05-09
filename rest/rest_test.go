@@ -21,45 +21,24 @@ import (
 
 func TestHandlerOnlyValidPaths(t *testing.T) {
 	var s, _ = rest.New()
-
-	isNotFound := func(method, path string) bool {
+	invalidPathIsNotFound := func(method, path string) bool {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(method, path, nil)
 		s.ServeHTTP(w, r)
 
-		_, isValidPath := validMethodsByPath[path]
-		if !isValidPath && w.Code != http.StatusNotFound {
+		if w.Code != http.StatusNotFound {
 			t.Logf("%s %q got %03d, expected 404", method, path, w.Code)
-			return false
-		}
-		if isValidPath && w.Code == http.StatusNotFound {
-			t.Logf("%s %q got %03d, expected not 404", method, path, w.Code)
 			return false
 		}
 		return true
 	}
-	if err := quick.Check(isNotFound, &quick.Config{
+	err := quick.Check(invalidPathIsNotFound, &quick.Config{
 		Values: func(args []reflect.Value, gen *rand.Rand) {
 			args[0] = reflect.ValueOf(possibleMethods[gen.Intn(len(possibleMethods))])
-			scratch := make([]byte, 1000)
-			gen.Read(scratch)
-			var path = "/" + strings.Map(func(char rune) rune {
-				switch {
-				case char >= '0' && char <= '9',
-					char >= 'A' && char <= 'Z',
-					char >= 'a' && char <= 'z',
-					char == '!',
-					char == '$',
-					char >= 0x27 && char <= '/':
-					return char
-				default:
-					return -1
-				}
-			}, string(scratch))
-			path = path[:25%len(path)]
-			args[1] = reflect.ValueOf(path)
+			args[1] = reflect.ValueOf(genInvalidPath(gen.Intn(100)+1, gen))
 		},
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("unexpected response to bad client request: %+v", err)
 	}
 }
@@ -176,4 +155,49 @@ func TestHandlerGetNew(t *testing.T) {
 	if err := quick.Check(getsNewResource, nil); err != nil {
 		t.Fatalf("GET /new does not get a new Resource: %+v", err)
 	}
+}
+
+var possibleMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodPut,
+	http.MethodPost,
+	http.MethodPatch,
+	http.MethodDelete,
+}
+
+func validMethodsByPath(path string) ([]string, bool) {
+	if path == "/new" {
+		return []string{http.MethodGet, http.MethodHead}, true
+	}
+	return nil, false
+}
+
+func genInvalidPath(maxLen int, r *rand.Rand) string {
+	for {
+		path := genPath(maxLen, r)
+		_, ok := validMethodsByPath(path)
+		if !ok {
+			return path
+		}
+	}
+}
+
+func genPath(maxLen int, r *rand.Rand) string {
+	scratch := make([]byte, 1000)
+	r.Read(scratch)
+	var path = "/" + strings.Map(func(char rune) rune {
+		switch {
+		case char >= '0' && char <= '9',
+			char >= 'A' && char <= 'Z',
+			char >= 'a' && char <= 'z',
+			char == '!',
+			char == '$',
+			char >= 0x27 && char <= '/':
+			return char
+		default:
+			return -1
+		}
+	}, string(scratch))
+	return path[:maxLen%len(path)]
 }
