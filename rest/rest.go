@@ -4,6 +4,7 @@
 package rest
 
 import (
+	"io/ioutil"
 	"net/http"
 
 	"github.com/lazyengineering/faststatus"
@@ -61,7 +62,31 @@ func (s *Server) handleResource(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
 	case http.MethodPut:
+		s.putResource(id).ServeHTTP(w, r)
 	default:
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	}
+}
+
+func (s *Server) putResource(id faststatus.ID) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		resource := new(faststatus.Resource)
+		if err := resource.UnmarshalText(b); err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+		if resource.Since.IsZero() {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+		if id != resource.ID {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+	})
 }
