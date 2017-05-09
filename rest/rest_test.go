@@ -20,7 +20,7 @@ import (
 )
 
 func TestHandlerOnlyValidPaths(t *testing.T) {
-	var s = rest.New()
+	var s, _ = rest.New()
 
 	isNotFound := func(method, path string) bool {
 		w := httptest.NewRecorder()
@@ -65,7 +65,7 @@ func TestHandlerOnlyValidPaths(t *testing.T) {
 }
 
 func TestHandlerOnlyValidPathsAndMethods(t *testing.T) {
-	var s = rest.New()
+	var s, _ = rest.New()
 	isNotAllowed := func(path string) func(string) bool {
 		return func(method string) bool {
 			w := httptest.NewRecorder()
@@ -115,7 +115,7 @@ var validMethodsByPath = map[string][]string{
 
 func TestHandlerGetNew(t *testing.T) {
 	const defaultContentType = "text/plain"
-	var s = rest.New()
+	var s, _ = rest.New()
 	var mu sync.Mutex
 	var usedIDs = make(map[faststatus.ID]struct{})
 	getsNewResource := func() bool {

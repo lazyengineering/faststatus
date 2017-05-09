@@ -13,9 +13,18 @@ import (
 type Server struct {
 }
 
-// New provides a restful endpoint for managing faststatus Resources
-func New() *Server {
-	return &Server{}
+// ServerOpt is used to configure a Server
+type ServerOpt func(*Server) error
+
+// New provides a restful endpoint for managing faststatus Resources.
+func New(opts ...ServerOpt) (*Server, error) {
+	s := &Server{}
+	for _, opt := range opts {
+		if err := opt(s); err != nil {
+			return nil, err
+		}
+	}
+	return s, nil
 }
 
 // ServeHTTP implements the http.Handler interface.
