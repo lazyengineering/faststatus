@@ -9,14 +9,17 @@ import (
 	"github.com/lazyengineering/faststatus"
 )
 
-type server struct{}
-
-// New provides a restful endpoint for managing faststatus Resources
-func New() http.Handler {
-	return &server{}
+// Server is a restful http server for Resources.
+type Server struct {
 }
 
-func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// New provides a restful endpoint for managing faststatus Resources
+func New() *Server {
+	return &Server{}
+}
+
+// ServeHTTP implements the http.Handler interface.
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/new":
 		s.handleNew(w, r)
@@ -25,7 +28,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *server) handleNew(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
 	default:
