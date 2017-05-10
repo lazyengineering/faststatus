@@ -107,5 +107,11 @@ func (s *Server) putResource(id faststatus.ID) http.Handler {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
+		rb, err := resource.MarshalText()
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		w.Write(rb)
 	})
 }

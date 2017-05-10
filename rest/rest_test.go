@@ -16,6 +16,7 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
+	"unicode/utf8"
 
 	"github.com/lazyengineering/faststatus"
 	"github.com/lazyengineering/faststatus/rest"
@@ -248,6 +249,51 @@ func TestHandlerPutToID(t *testing.T) {
 			t.Fatalf("Store Save called %d times, expected exactly once", store.saveCalled)
 		}
 	})
+
+	t.Run("good requests", func(t *testing.T) {
+		goodRequestsSave := func(r faststatus.Resource) bool {
+			path, _ := r.ID.MarshalText()
+			body, _ := r.MarshalText()
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPut, "/"+string(path), bytes.NewReader(body))
+
+			var callSaveWithResource bool
+			store := &mockStore{
+				saveFn: func(r2 faststatus.Resource) error {
+					callSaveWithResource = r.Equal(r2)
+					return nil
+				},
+			}
+
+			s, _ := rest.New(rest.WithStore(store))
+			s.ServeHTTP(w, req)
+			if w.Code != http.StatusOK {
+				t.Logf("returned Status Code %03d, expected %03d", w.Code, http.StatusOK)
+				return false
+			}
+
+			if !callSaveWithResource {
+				t.Logf("did not call save with expected resource")
+				return false
+			}
+
+			if !bytes.Equal(w.Body.Bytes(), body) {
+				t.Logf("responded with %s, expected %s", w.Body.Bytes(), body)
+				return false
+			}
+
+			return true
+		}
+		err := quick.Check(goodRequestsSave, &quick.Config{
+			Values: func(val []reflect.Value, r *rand.Rand) {
+				val[0] = reflect.ValueOf(genResource(140, r))
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed to save a good request: %+v", err)
+		}
+	})
 }
 
 var possibleMethods = []string{
@@ -324,6 +370,40 @@ func genBadBody(r *rand.Rand) []byte {
 	scratch := make([]byte, r.Intn(1000))
 	r.Read(scratch)
 	return scratch
+}
+
+func genResource(size int, rgen *rand.Rand) faststatus.Resource {
+	rr := faststatus.Resource{}
+	rr.ID, _ = faststatus.NewID()
+	rr.FriendlyName = func(size int, rgen *rand.Rand) string {
+		txt := make([]byte, 0, size)
+		for len(txt) < size {
+			p := make([]byte, 1)
+			n, err := rgen.Read(p)
+			if err != nil {
+				panic(err)
+			}
+			if n != 1 {
+				continue
+			}
+			if utf8.Valid(p) {
+				txt = append(txt, p...)
+			}
+		}
+		return string(txt)
+	}(rgen.Intn(100), rgen)
+	rr.Status = faststatus.Status(rgen.Int() % int(faststatus.Occupied))
+	rr.Since = time.Date(
+		2016+rgen.Intn(10),
+		time.Month(rgen.Intn(11)+1),
+		rgen.Intn(27)+1,
+		rgen.Intn(24),
+		rgen.Intn(60),
+		rgen.Intn(60),
+		0,
+		time.UTC,
+	)
+	return rr
 }
 
 type errorReader struct{}
