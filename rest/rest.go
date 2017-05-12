@@ -73,9 +73,11 @@ func (s *Server) handleResource(w http.ResponseWriter, r *http.Request) {
 	var id faststatus.ID
 	if err := (&id).UnmarshalText([]byte(r.URL.Path[1:])); err != nil {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
 	}
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
+		s.getResource(id).ServeHTTP(w, r)
 	case http.MethodPut:
 		s.putResource(id).ServeHTTP(w, r)
 	default:
@@ -111,6 +113,25 @@ func (s *Server) putResource(id faststatus.ID) http.Handler {
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
+		}
+		w.Write(rb)
+	})
+}
+
+func (s *Server) getResource(id faststatus.ID) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resource, err := s.store.Get(id)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		if resource.Equal(faststatus.Resource{}) {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+		rb, err := resource.MarshalText()
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		w.Write(rb)
 	})

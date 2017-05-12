@@ -47,7 +47,14 @@ func TestHandlerOnlyValidPaths(t *testing.T) {
 }
 
 func TestHandlerOnlyValidPathsAndMethods(t *testing.T) {
-	var s, _ = rest.New()
+	var s, _ = rest.New(rest.WithStore(&mockStore{
+		saveFn: func(faststatus.Resource) error {
+			return fmt.Errorf("an error")
+		},
+		getFn: func(faststatus.ID) (faststatus.Resource, error) {
+			return faststatus.Resource{}, fmt.Errorf("an error")
+		},
+	}))
 	isNotAllowed := func(method, path string) bool {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(method, path, nil)
@@ -292,6 +299,102 @@ func TestHandlerPutToID(t *testing.T) {
 		})
 		if err != nil {
 			t.Fatalf("failed to save a good request: %+v", err)
+		}
+	})
+}
+
+func TestHandlerGetFromID(t *testing.T) {
+	//TODO(jesse@jessecarl.com): Once the errors can be inspected to identify conflicts, add 409 status
+	//TODO(jesse@jessecarl.com): Content negotiation. For now, everything is text/plain.
+	t.Run("store get error", func(t *testing.T) {
+		store := &mockStore{getFn: func(faststatus.ID) (faststatus.Resource, error) {
+			return faststatus.Resource{}, fmt.Errorf("an error")
+		}}
+		var s, err = rest.New(rest.WithStore(store))
+		if err != nil {
+			t.Fatalf("unexpected error creating store: %+v", err)
+		}
+
+		id, _ := faststatus.NewID()
+		idB, _ := id.MarshalText()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "/"+string(idB), nil)
+		s.ServeHTTP(w, r)
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("returned Status Code %03d, expected %03d", w.Code, http.StatusInternalServerError)
+		}
+		if store.getCalled != 1 {
+			t.Fatalf("Store Get called %d times, expected exactly once", store.getCalled)
+		}
+	})
+
+	t.Run("store get not found", func(t *testing.T) {
+		store := &mockStore{getFn: func(faststatus.ID) (faststatus.Resource, error) {
+			return faststatus.Resource{}, nil
+		}}
+		var s, err = rest.New(rest.WithStore(store))
+		if err != nil {
+			t.Fatalf("unexpected error creating store: %+v", err)
+		}
+
+		id, _ := faststatus.NewID()
+		idB, _ := id.MarshalText()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "/"+string(idB), nil)
+		s.ServeHTTP(w, r)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("returned Status Code %03d, expected %03d", w.Code, http.StatusNotFound)
+		}
+		if store.getCalled != 1 {
+			t.Fatalf("Store Get called %d times, expected exactly once", store.getCalled)
+		}
+	})
+
+	t.Run("store get resource", func(t *testing.T) {
+		// given assorted Resources, expect that resource to be returned from a get request
+		getsBackExpectedResource := func(resource faststatus.Resource) bool {
+			var calledCorrectly bool
+			store := &mockStore{getFn: func(id faststatus.ID) (faststatus.Resource, error) {
+				calledCorrectly = id == resource.ID
+				return resource, nil
+			}}
+			var s, err = rest.New(rest.WithStore(store))
+			if err != nil {
+				t.Fatalf("unexpected error creating store: %+v", err)
+			}
+
+			idB, _ := resource.ID.MarshalText()
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/"+string(idB), nil)
+			s.ServeHTTP(w, r)
+			if w.Code != http.StatusOK {
+				t.Logf("returned Status Code %03d, expected %03d", w.Code, http.StatusOK)
+				return false
+			}
+			if store.getCalled != 1 {
+				t.Logf("Store Get called %d times, expected exactly once", store.getCalled)
+				return false
+			}
+			var got faststatus.Resource
+			err = (&got).UnmarshalText(w.Body.Bytes())
+			if err != nil {
+				t.Logf("Response body failed to unmarshal to Resource: %+v", err)
+				return false
+			}
+			if !got.Equal(resource) {
+				t.Logf("Response body unmarshals to %+v, expected %+v", got, resource)
+				return false
+			}
+			return true
+		}
+		err := quick.Check(getsBackExpectedResource, &quick.Config{Values: func(val []reflect.Value, r *rand.Rand) {
+			val[0] = reflect.ValueOf(genResource(140, r))
+		}})
+		if err != nil {
+			t.Fatalf("unexpected response to good get resource request: %+v", err)
 		}
 	})
 }
