@@ -36,7 +36,6 @@ func TestSave(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			true,
 		},
@@ -49,7 +48,6 @@ func TestSave(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			true,
 		},
@@ -62,7 +60,6 @@ func TestSave(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			true,
 		},
@@ -75,7 +72,6 @@ func TestSave(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			false,
 		},
@@ -88,7 +84,6 @@ func TestSave(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			true,
 		},
@@ -101,7 +96,6 @@ func TestSave(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:15:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			false,
 		},
@@ -130,7 +124,6 @@ func TestSaveIsIdempotent(t *testing.T) {
 			tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 			return tt
 		}(),
-		FriendlyName: "First One",
 	}
 
 	for i := 0; i < 20; i++ {
@@ -162,7 +155,6 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "First One",
 		},
 		{
 			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
@@ -171,7 +163,6 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "Second One",
 		},
 		{
 			ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
@@ -180,7 +171,6 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "Third One",
 		},
 		{
 			ID: faststatus.ID{
@@ -206,7 +196,6 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "First One",
 		},
 		{
 			ID: faststatus.ID{
@@ -232,7 +221,6 @@ func TestSaveIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
 				return tt
 			}(),
-			FriendlyName: "Another One",
 		},
 	}
 
@@ -270,7 +258,6 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "First One",
 		},
 		"second": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
@@ -279,7 +266,6 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
 				return tt
 			}(),
-			FriendlyName: "Second One",
 		},
 		"third": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
@@ -288,7 +274,6 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:02-07:00")
 				return tt
 			}(),
-			FriendlyName: "Third One",
 		},
 		"fourth": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
@@ -297,7 +282,6 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:03-07:00")
 				return tt
 			}(),
-			FriendlyName: "Fourth One",
 		},
 		"final": {
 			ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
@@ -306,7 +290,6 @@ func TestSaveStoresOnlyLatest(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:04-07:00")
 				return tt
 			}(),
-			FriendlyName: "Last One",
 		},
 	}
 
@@ -344,7 +327,6 @@ func TestGet(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "First One",
 		},
 		"not-found": {
 			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
@@ -353,7 +335,6 @@ func TestGet(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:00:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "First One",
 		},
 	}
 
@@ -427,7 +408,6 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "First One",
 		},
 		{
 			ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
@@ -436,7 +416,6 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "Second One",
 		},
 		{
 			ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
@@ -445,7 +424,6 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "Third One",
 		},
 		{
 			ID:     faststatus.ID{0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45},
@@ -454,7 +432,6 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 				return tt
 			}(),
-			FriendlyName: "First One",
 		},
 		{
 			ID:     faststatus.ID{0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67},
@@ -463,7 +440,6 @@ func TestGetIsConcurrencySafe(t *testing.T) {
 				tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:01-07:00")
 				return tt
 			}(),
-			FriendlyName: "Another One",
 		},
 	}
 
@@ -507,7 +483,6 @@ func TestGetIsIdempotent(t *testing.T) {
 			tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 			return tt
 		}(),
-		FriendlyName: "First One",
 	}
 	err := s.Save(r)
 	if err != nil {
