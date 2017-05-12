@@ -16,7 +16,6 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
-	"unicode/utf8"
 
 	"github.com/lazyengineering/faststatus"
 	"github.com/lazyengineering/faststatus/rest"
@@ -478,23 +477,6 @@ func genBadBody(r *rand.Rand) []byte {
 func genResource(size int, rgen *rand.Rand) faststatus.Resource {
 	rr := faststatus.Resource{}
 	rr.ID, _ = faststatus.NewID()
-	rr.FriendlyName = func(size int, rgen *rand.Rand) string {
-		txt := make([]byte, 0, size)
-		for len(txt) < size {
-			p := make([]byte, 1)
-			n, err := rgen.Read(p)
-			if err != nil {
-				panic(err)
-			}
-			if n != 1 {
-				continue
-			}
-			if utf8.Valid(p) {
-				txt = append(txt, p...)
-			}
-		}
-		return string(txt)
-	}(rgen.Intn(100), rgen)
 	rr.Status = faststatus.Status(rgen.Int() % int(faststatus.Occupied))
 	rr.Since = time.Date(
 		2016+rgen.Intn(10),
