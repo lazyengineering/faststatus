@@ -60,11 +60,13 @@ func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet, http.MethodHead:
 	default:
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
 	}
 	resource := faststatus.NewResource()
 	txt, err := resource.MarshalText()
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 	w.Write(txt)
 }
@@ -132,6 +134,7 @@ func (s *Server) getResource(id faststatus.ID) http.Handler {
 		rb, err := resource.MarshalText()
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
 		w.Write(rb)
 	})
