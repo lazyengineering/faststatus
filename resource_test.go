@@ -724,6 +724,19 @@ func TestResourceUnmarshalBinaryBadData(t *testing.T) {
 				return b[0 : len(b)-5]
 			}(),
 		},
+		{"too much data",
+			func() []byte {
+				b, _ := faststatus.Resource{
+					ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+					Status: faststatus.Free,
+					Since: func() time.Time {
+						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+						return tt
+					}(),
+				}.MarshalBinary()
+				return append(b, make([]byte, 5)...)
+			}(),
+		},
 		{"bad status bytes",
 			func() []byte {
 				b, _ := faststatus.Resource{
