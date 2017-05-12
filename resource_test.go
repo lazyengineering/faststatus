@@ -25,7 +25,7 @@ func TestResourceString(t *testing.T) {
 			faststatus.Resource{},
 		},
 		{"Valid Busy",
-			"01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T15:09:00-07:00 First One",
+			"01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T15:09:00-07:00",
 			faststatus.Resource{
 				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
 				Status: faststatus.Busy,
@@ -33,11 +33,10 @@ func TestResourceString(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 		},
 		{"Valid Free",
-			"23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T15:39:00-07:00 Second One",
+			"23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T15:39:00-07:00",
 			faststatus.Resource{
 				ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
 				Status: faststatus.Free,
@@ -45,11 +44,10 @@ func TestResourceString(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:39:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Second One",
 			},
 		},
 		{"Valid Occupied",
-			"456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T15:40:00-07:00 Third One",
+			"456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T15:40:00-07:00",
 			faststatus.Resource{
 				ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
 				Status: faststatus.Occupied,
@@ -57,7 +55,6 @@ func TestResourceString(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:40:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Third One",
 			},
 		},
 		{"Out of Range",
@@ -69,7 +66,6 @@ func TestResourceString(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:43:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Another One",
 			},
 		},
 	}
@@ -103,9 +99,8 @@ func TestResourceMarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:09:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
-			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T15:09:00-07:00 First One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T15:09:00-07:00"),
 			false,
 		},
 		{"Valid Free",
@@ -116,9 +111,8 @@ func TestResourceMarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:39:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Second One",
 			},
-			[]byte("23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T15:39:00-07:00 Second One"),
+			[]byte("23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T15:39:00-07:00"),
 			false,
 		},
 		{"Valid Occupied",
@@ -129,9 +123,8 @@ func TestResourceMarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:40:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Third One",
 			},
-			[]byte("456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T15:40:00-07:00 Third One"),
+			[]byte("456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T15:40:00-07:00"),
 			false,
 		},
 		{"Out of Range",
@@ -142,7 +135,6 @@ func TestResourceMarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T15:43:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Another One",
 			},
 			[]byte(""),
 			true,
@@ -175,12 +167,11 @@ func TestResourceUnmarshalText(t *testing.T) {
 			faststatus.Resource{},
 		},
 		{"valid busy",
-			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T16:25:00-07:00 First One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 2016-05-12T16:25:00-07:00"),
 			false,
 			faststatus.Resource{
-				ID:           faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
-				FriendlyName: "First One",
-				Status:       faststatus.Busy,
+				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
@@ -188,12 +179,11 @@ func TestResourceUnmarshalText(t *testing.T) {
 			},
 		},
 		{"valid busy (numeric status)",
-			[]byte("01234567-89ab-cdef-0123-456789abcdef 1 2016-05-12T16:25:00-07:00 First One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef 1 2016-05-12T16:25:00-07:00"),
 			false,
 			faststatus.Resource{
-				ID:           faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
-				FriendlyName: "First One",
-				Status:       faststatus.Busy,
+				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
+				Status: faststatus.Busy,
 				Since: func() time.Time {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
@@ -201,7 +191,7 @@ func TestResourceUnmarshalText(t *testing.T) {
 			},
 		},
 		{"valid free",
-			[]byte("23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T16:27:00-07:00 Second One"),
+			[]byte("23456789-abcd-ef01-2345-6789abcdef01 free 2016-05-12T16:27:00-07:00"),
 			false,
 			faststatus.Resource{
 				ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
@@ -210,11 +200,10 @@ func TestResourceUnmarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Second One",
 			},
 		},
 		{"valid free (numeric status)",
-			[]byte("23456789-abcd-ef01-2345-6789abcdef01 0 2016-05-12T16:27:00-07:00 Second One"),
+			[]byte("23456789-abcd-ef01-2345-6789abcdef01 0 2016-05-12T16:27:00-07:00"),
 			false,
 			faststatus.Resource{
 				ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
@@ -223,11 +212,10 @@ func TestResourceUnmarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Second One",
 			},
 		},
 		{"valid occupied",
-			[]byte("456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T16:28:00-07:00 Third One"),
+			[]byte("456789ab-cdef-0123-4567-89abcdef0123 occupied 2016-05-12T16:28:00-07:00"),
 			false,
 			faststatus.Resource{
 				ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
@@ -236,11 +224,10 @@ func TestResourceUnmarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Third One",
 			},
 		},
 		{"valid occupied (numeric status)",
-			[]byte("456789ab-cdef-0123-4567-89abcdef0123 2 2016-05-12T16:28:00-07:00 Third One"),
+			[]byte("456789ab-cdef-0123-4567-89abcdef0123 2 2016-05-12T16:28:00-07:00"),
 			false,
 			faststatus.Resource{
 				ID:     faststatus.ID{0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23},
@@ -249,21 +236,20 @@ func TestResourceUnmarshalText(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Third One",
 			},
 		},
 		{"invalid id",
-			[]byte("0123456--0000-0000-0000-000000000000 occupied 2016-05-12T16:30:00-07:00 Another One"),
+			[]byte("0123456--0000-0000-0000-000000000000 occupied 2016-05-12T16:30:00-07:00"),
 			true,
 			faststatus.Resource{},
 		},
 		{"invalid status",
-			[]byte("01234567-89ab-cdef-0123-456789abcdef 4 2016-05-12T16:30:00-07:00 Another One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef 4 2016-05-12T16:30:00-07:00"),
 			true,
 			faststatus.Resource{},
 		},
 		{"invalid since",
-			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 16-05-12T16:30:00-07:00 Another One"),
+			[]byte("01234567-89ab-cdef-0123-456789abcdef busy 16-05-12T16:30:00-07:00"),
 			true,
 			faststatus.Resource{},
 		},
@@ -327,7 +313,7 @@ func TestResourceMarshalJSON(t *testing.T) {
 	}{
 		{"Zero Value",
 			faststatus.Resource{},
-			[]byte(`{"id":"00000000-0000-0000-0000-000000000000","status":"free","since":"0001-01-01T00:00:00Z","friendlyName":""}`),
+			[]byte(`{"id":"00000000-0000-0000-0000-000000000000","status":"free","since":"0001-01-01T00:00:00Z"}`),
 			false,
 		},
 		{"Valid Busy",
@@ -338,9 +324,8 @@ func TestResourceMarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
-			[]byte(`{"id":"01234567-89ab-cdef-0123-456789abcdef","status":"busy","since":"2016-05-12T16:25:00-07:00","friendlyName":"First One"}`),
+			[]byte(`{"id":"01234567-89ab-cdef-0123-456789abcdef","status":"busy","since":"2016-05-12T16:25:00-07:00"}`),
 			false,
 		},
 		{"Valid Free",
@@ -351,9 +336,8 @@ func TestResourceMarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Second One",
 			},
-			[]byte(`{"id":"23456789-abcd-ef01-2345-6789abcdef01","status":"free","since":"2016-05-12T16:27:00-07:00","friendlyName":"Second One"}`),
+			[]byte(`{"id":"23456789-abcd-ef01-2345-6789abcdef01","status":"free","since":"2016-05-12T16:27:00-07:00"}`),
 			false,
 		},
 		{"Valid Occupied",
@@ -364,9 +348,8 @@ func TestResourceMarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Third One",
 			},
-			[]byte(`{"id":"456789ab-cdef-0123-4567-89abcdef0123","status":"occupied","since":"2016-05-12T16:28:00-07:00","friendlyName":"Third One"}`),
+			[]byte(`{"id":"456789ab-cdef-0123-4567-89abcdef0123","status":"occupied","since":"2016-05-12T16:28:00-07:00"}`),
 			false,
 		},
 		{"Out of Range",
@@ -377,7 +360,6 @@ func TestResourceMarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:30:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Another One",
 			},
 			nil,
 			true,
@@ -413,8 +395,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			[]byte(`{
 				"id":"01234567-89ab-cdef-0123-456789abcdef",
 				"status":"1",
-				"since":"2016-05-12T16:25:00-07:00",
-				"friendlyName":"First One"
+				"since":"2016-05-12T16:25:00-07:00"
 			}`),
 			faststatus.Resource{
 				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
@@ -423,7 +404,6 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			false,
 		},
@@ -431,8 +411,7 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			[]byte(`{
 				"id":"01234567-89ab-cdef-0123-456789abcdef",
 				"status":"busy",
-				"since":"2016-05-12T16:25:00-07:00",
-				"friendlyName":"First One"
+				"since":"2016-05-12T16:25:00-07:00"
 			}`),
 			faststatus.Resource{
 				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
@@ -441,13 +420,11 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			false,
 		},
 		{"Valid Free",
 			[]byte(`{
-				"friendlyName":"Second One",
 				"id":"23456789-abcd-ef01-2345-6789abcdef01",
 				"status":"0",
 				"since":"2016-05-12T16:27:00-07:00"
@@ -459,13 +436,11 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Second One",
 			},
 			false,
 		},
 		{"Valid Free text value",
 			[]byte(`{
-				"friendlyName":"Second One",
 				"id":"23456789-abcd-ef01-2345-6789abcdef01",
 				"status":"FrEe",
 				"since":"2016-05-12T16:27:00-07:00"
@@ -477,7 +452,6 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Second One",
 			},
 			false,
 		},
@@ -485,7 +459,6 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			[]byte(`{
 				"since":"2016-05-12T16:28:00-07:00",
 				"status":"2",
-				"friendlyName":"Third One",
 				"id":"456789ab-cdef-0123-4567-89abcdef0123"
 			}`),
 			faststatus.Resource{
@@ -495,7 +468,6 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Third One",
 			},
 			false,
 		},
@@ -503,7 +475,6 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 			[]byte(`{
 				"since":"2016-05-12T16:28:00-07:00",
 				"status":"OCCUPIED",
-				"friendlyName":"Third One",
 				"id":"456789ab-cdef-0123-4567-89abcdef0123"
 			}`),
 			faststatus.Resource{
@@ -513,14 +484,12 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:28:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "Third One",
 			},
 			false,
 		},
 		{"Out of Range",
 			[]byte(`{
 				"id":"6789abcd-ef01-2345-6789-abcdef012345",
-				"friendlyName":"Another One",
 				"status":"3",
 				"since":"2016-05-12T16:30:00-07:00"
 			}`),
@@ -530,7 +499,6 @@ func TestResourceUnmarshalJSON(t *testing.T) {
 		{"Bad ID",
 			[]byte(`{
 				"id":"01234567-89ab-cdef-0123-456789abcdef0",
-				"friendlyName":"Third One",
 				"status":"2",
 				"since":"2016-05-12T16:28:00-07:00"
 			}`),
@@ -591,7 +559,6 @@ func TestResourceEqual(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			func(r faststatus.Resource) faststatus.Resource { return r },
 			true,
@@ -604,7 +571,6 @@ func TestResourceEqual(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			func(r faststatus.Resource) faststatus.Resource {
 				r.ID = faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01}
@@ -620,26 +586,9 @@ func TestResourceEqual(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			func(r faststatus.Resource) faststatus.Resource {
 				r.Status = faststatus.Free
-				return r
-			},
-			false,
-		},
-		{"change in FriendlyName",
-			faststatus.Resource{
-				ID:     faststatus.ID{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef},
-				Status: faststatus.Busy,
-				Since: func() time.Time {
-					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
-					return tt
-				}(),
-				FriendlyName: "First One",
-			},
-			func(r faststatus.Resource) faststatus.Resource {
-				r.FriendlyName = "Second Resource"
 				return r
 			},
 			false,
@@ -652,7 +601,6 @@ func TestResourceEqual(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			func(r faststatus.Resource) faststatus.Resource {
 				r.Since = r.Since.Add(time.Minute)
@@ -668,7 +616,6 @@ func TestResourceEqual(t *testing.T) {
 					tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:25:00-07:00")
 					return tt
 				}(),
-				FriendlyName: "First One",
 			},
 			func(r faststatus.Resource) faststatus.Resource {
 				r.Since = r.Since.UTC()
@@ -718,10 +665,10 @@ func TestResourceMarshalBinaryVersionByte(t *testing.T) {
 	}
 }
 
-func TestResourceMarshalBinaryLengthByte(t *testing.T) {
+func TestResourceMarshalBinaryBufferByte(t *testing.T) {
 	f := func(r faststatus.Resource) bool {
 		b, _ := r.MarshalBinary()
-		return len(b) >= 4 && uint8(b[3]) == uint8(len(r.FriendlyName))
+		return len(b) >= 4 && uint8(b[3]) == uint8(0)
 	}
 	if err := quick.Check(f, nil); err != nil {
 		t.Fatal(err)
@@ -731,7 +678,7 @@ func TestResourceMarshalBinaryLengthByte(t *testing.T) {
 func TestResourceMarshalBinaryLength(t *testing.T) {
 	f := func(r faststatus.Resource) bool {
 		b, _ := r.MarshalBinary()
-		return len(b) == 4+32+len(r.FriendlyName)
+		return len(b) == 4+32
 	}
 	if err := quick.Check(f, nil); err != nil {
 		t.Fatal(err)
@@ -773,9 +720,21 @@ func TestResourceUnmarshalBinaryBadData(t *testing.T) {
 						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 						return tt
 					}(),
-					FriendlyName: "Second One",
 				}.MarshalBinary()
 				return b[0 : len(b)-5]
+			}(),
+		},
+		{"too much data",
+			func() []byte {
+				b, _ := faststatus.Resource{
+					ID:     faststatus.ID{0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01},
+					Status: faststatus.Free,
+					Since: func() time.Time {
+						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
+						return tt
+					}(),
+				}.MarshalBinary()
+				return append(b, make([]byte, 5)...)
 			}(),
 		},
 		{"bad status bytes",
@@ -787,7 +746,6 @@ func TestResourceUnmarshalBinaryBadData(t *testing.T) {
 						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 						return tt
 					}(),
-					FriendlyName: "Second One",
 				}.MarshalBinary()
 				b[20] = 17
 				return b
@@ -802,7 +760,6 @@ func TestResourceUnmarshalBinaryBadData(t *testing.T) {
 						tt, _ := time.Parse(time.RFC3339, "2016-05-12T16:27:00-07:00")
 						return tt
 					}(),
-					FriendlyName: "Second One",
 				}.MarshalBinary()
 				b[21] = 17
 				return b
@@ -870,10 +827,6 @@ func TestNewResourceIsMostlyZero(t *testing.T) {
 		}
 		if !r.Since.IsZero() {
 			t.Logf("since is not zero-value")
-			return false
-		}
-		if r.FriendlyName != "" {
-			t.Logf("friendly name is not zero-value")
 			return false
 		}
 		return true

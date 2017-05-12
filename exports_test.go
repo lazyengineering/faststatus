@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"reflect"
 	"time"
-	"unicode/utf8"
 )
 
 var availableLocations []*time.Location
@@ -39,23 +38,6 @@ func (r Resource) Generate(rgen *rand.Rand, size int) reflect.Value {
 	rr := Resource{}
 
 	rr.ID, _ = NewID()
-	rr.FriendlyName = func(rgen *rand.Rand, size int) string {
-		txt := make([]byte, 0, size)
-		for len(txt) < size {
-			p := make([]byte, 1)
-			n, err := rgen.Read(p)
-			if err != nil {
-				panic(err)
-			}
-			if n != 1 {
-				continue
-			}
-			if utf8.Valid(p) {
-				txt = append(txt, p...)
-			}
-		}
-		return string(txt)
-	}(rgen, rgen.Intn(100))
 	rr.Status = Status(rgen.Int() % int(Occupied))
 	rr.Since = time.Date(
 		2016+rgen.Intn(10),
