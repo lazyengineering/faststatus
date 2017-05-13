@@ -4,6 +4,7 @@
 package rest
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -45,97 +46,117 @@ func WithStore(store Store) ServerOpt {
 
 // ServeHTTP implements the http.Handler interface.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/new":
-		s.handleNew(w, r)
-	case "/":
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-	default:
-		s.handleResource(w, r)
+	err := s.serveHTTP(w, r)
+	if err != nil {
+		http.Error(w, http.StatusText(errorCode(err)), errorCode(err))
 	}
 }
 
-func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) error {
+	switch r.URL.Path {
+	case "/":
+		return &restError{code: http.StatusNotFound}
+	case "/new":
+		return s.handleNew(w, r)
+	default:
+		return s.handleResource(w, r)
+	}
+}
+
+func (s *Server) handleNew(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
 	default:
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
+		return &restError{code: http.StatusMethodNotAllowed}
 	}
 	resource := faststatus.NewResource()
 	txt, err := resource.MarshalText()
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("marshaling to text: %+v", err)
 	}
 	w.Write(txt)
+	return nil
 }
 
-func (s *Server) handleResource(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleResource(w http.ResponseWriter, r *http.Request) error {
 	var id faststatus.ID
 	if err := (&id).UnmarshalText([]byte(r.URL.Path[1:])); err != nil {
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return
+		return &restError{
+			err:  fmt.Errorf("unmarshalling id from path: %+v", err),
+			code: http.StatusNotFound,
+		}
 	}
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
-		s.getResource(id).ServeHTTP(w, r)
+		return s.getResource(id).serveHTTP(w, r)
 	case http.MethodPut:
-		s.putResource(id).ServeHTTP(w, r)
+		return s.putResource(id).serveHTTP(w, r)
 	default:
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return &restError{code: http.StatusMethodNotAllowed}
 	}
 }
 
-func (s *Server) putResource(id faststatus.ID) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (s *Server) putResource(id faststatus.ID) handlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+			return fmt.Errorf("reading from request body: %+v", err)
 		}
 		resource := new(faststatus.Resource)
 		if err := resource.UnmarshalText(b); err != nil {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			return
+			return &restError{
+				err:  fmt.Errorf("unmarshaling resource from request: %+v", err),
+				code: http.StatusBadRequest,
+			}
 		}
 		if resource.Since.IsZero() {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			return
+			return &restError{
+				err:  fmt.Errorf("zero-value Since"),
+				code: http.StatusBadRequest,
+			}
 		}
 		if id != resource.ID {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			return
+			return &restError{
+				err:  fmt.Errorf("resource ID %q does not match path ID %q", resource.ID, id),
+				code: http.StatusBadRequest,
+			}
 		}
 		if err := s.store.Save(*resource); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+			return fmt.Errorf("saving resource to store: %+v", err)
 		}
 		rb, err := resource.MarshalText()
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+			return fmt.Errorf("marshaling resource for response: %+v", err)
 		}
 		w.Write(rb)
-	})
+		return nil
+	}
 }
 
-func (s *Server) getResource(id faststatus.ID) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getResource(id faststatus.ID) handlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
 		resource, err := s.store.Get(id)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+			return fmt.Errorf("getting resource from store: %+v", err)
 		}
 		if resource.Equal(faststatus.Resource{}) {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
+			return &restError{code: http.StatusNotFound}
 		}
 		rb, err := resource.MarshalText()
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+			return fmt.Errorf("marshaling resource for response: %+v", err)
 		}
 		w.Write(rb)
-	})
+		return nil
+	}
+}
+
+type handler interface {
+	serveHTTP(http.ResponseWriter, *http.Request) error
+}
+
+type handlerFunc func(http.ResponseWriter, *http.Request) error
+
+func (fn handlerFunc) serveHTTP(w http.ResponseWriter, r *http.Request) error {
+	return fn(w, r)
 }
