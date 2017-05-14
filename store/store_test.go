@@ -22,10 +22,10 @@ func TestSave(t *testing.T) {
 
 	// order of test cases matters here (these are not stateless)
 	testCases := []struct {
-		name     string
-		store    *store.Store
-		resource faststatus.Resource
-		wantErr  bool
+		name      string
+		store     *store.Store
+		resource  faststatus.Resource
+		wantError func(error) bool
 	}{
 		{"Save should return an error if the store is nil",
 			nil,
@@ -37,7 +37,7 @@ func TestSave(t *testing.T) {
 					return tt
 				}(),
 			},
-			true,
+			func(e error) bool { return e != nil },
 		},
 		{"Save should return an error if the database is not initialized",
 			&store.Store{},
@@ -49,7 +49,7 @@ func TestSave(t *testing.T) {
 					return tt
 				}(),
 			},
-			true,
+			func(e error) bool { return e != nil },
 		},
 		{"Save should return an error for a resource with a zero-value ID",
 			&store.Store{DB: db},
@@ -61,7 +61,7 @@ func TestSave(t *testing.T) {
 					return tt
 				}(),
 			},
-			true,
+			store.ZeroValueError,
 		},
 		{"Save should not return an error for a new resource",
 			&store.Store{DB: db},
@@ -73,7 +73,7 @@ func TestSave(t *testing.T) {
 					return tt
 				}(),
 			},
-			false,
+			func(e error) bool { return e == nil },
 		},
 		{"Save should return an error if there is a more recent version already saved",
 			&store.Store{DB: db},
@@ -85,7 +85,7 @@ func TestSave(t *testing.T) {
 					return tt
 				}(),
 			},
-			true,
+			faststatus.ConflictError,
 		},
 		{"Save should not return an error for the most recent valid resource",
 			&store.Store{DB: db},
@@ -97,15 +97,15 @@ func TestSave(t *testing.T) {
 					return tt
 				}(),
 			},
-			false,
+			func(e error) bool { return e == nil },
 		},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.store.Save(tc.resource)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("%+v.Save(%+v) = %+v, expected error? %+v", tc.store, tc.resource, err, tc.wantErr)
+			if !tc.wantError(err) {
+				t.Fatalf("%+v.Save(%+v) error checks false, expected true from %+v", tc.store, tc.resource, err)
 			}
 		})
 	}
@@ -346,37 +346,37 @@ func TestGet(t *testing.T) {
 		name         string
 		store        *store.Store
 		id           faststatus.ID
-		wantErr      bool
+		wantError    func(error) bool
 		wantResource faststatus.Resource
 	}{
 		{"Get should return an error if the store is nil",
 			nil,
 			stockResources["valid"].ID,
-			true,
+			func(e error) bool { return e != nil },
 			faststatus.Resource{},
 		},
 		{"Get should return an error if the database is not initialized",
 			&store.Store{},
 			stockResources["valid"].ID,
-			true,
+			func(e error) bool { return e != nil },
 			faststatus.Resource{},
 		},
 		{"Get should return an error for a zero-value ID",
 			&store.Store{DB: db},
 			faststatus.ID{},
-			true,
+			store.ZeroValueError,
 			faststatus.Resource{},
 		},
 		{"Get should return a valid Resource with the input ID",
 			&store.Store{DB: db},
 			stockResources["valid"].ID,
-			false,
+			func(e error) bool { return e == nil },
 			stockResources["valid"],
 		},
 		{"Get should return a zero-value Resource when none found",
 			&store.Store{DB: db},
 			stockResources["not-found"].ID,
-			false,
+			func(e error) bool { return e == nil },
 			faststatus.Resource{},
 		},
 	}
@@ -384,8 +384,8 @@ func TestGet(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			gotResource, err := tc.store.Get(tc.id)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("%+v.Get(%+v) = <Resource> %+v, expected error? %+v", tc.store, tc.id, err, tc.wantErr)
+			if !tc.wantError(err) {
+				t.Fatalf("%+v.Get(%+v) error checks false, expected true from %+v", tc.store, tc.id, err)
 			}
 			if !gotResource.Equal(tc.wantResource) {
 				t.Fatalf("%+v.Get(%+v) = %+v <error>, expected %+v", tc.store, tc.id, gotResource, tc.wantResource)
