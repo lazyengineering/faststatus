@@ -1,6 +1,10 @@
 package store
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/pkg/errors"
+)
 
 type dataError struct {
 	old  bool
@@ -33,6 +37,9 @@ func StaleError(e error) bool {
 	if e, ok := e.(staler); ok {
 		return e.Stale()
 	}
+	if e, ok := errors.Cause(e).(staler); ok {
+		return e.Stale()
+	}
 	return false
 }
 
@@ -41,6 +48,9 @@ func ZeroValueError(e error) bool {
 		ZeroValue() bool
 	}
 	if e, ok := e.(zeroValuer); ok {
+		return e.ZeroValue()
+	}
+	if e, ok := errors.Cause(e).(zeroValuer); ok {
 		return e.ZeroValue()
 	}
 	return false

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 
 	"github.com/lazyengineering/faststatus"
 )
@@ -25,42 +26,39 @@ func (s *Store) Save(r faststatus.Resource) error {
 		return errorDBNotInitialized
 	}
 	if r.ID == (faststatus.ID{}) {
-		return fmt.Errorf("cannot save a resource with a zero-value ID")
+		return dataError{noID: true}
 	}
 	key, err := r.ID.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("marshaling binary key from resource ID: %+v", err)
+		return errors.Wrap(err, "marshaling binary key from resource ID")
 	}
 
 	err = s.DB.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil {
-			return fmt.Errorf("creating bucket: %+v", err)
+			return errors.Wrap(err, "creating bucket")
 		}
 
 		latest := b.Get(key)
 		if len(latest) > 0 {
 			latestResource := new(faststatus.Resource)
 			if err := latestResource.UnmarshalBinary(latest); err != nil {
-				return fmt.Errorf("unmarshaling latest stored resource: %+v", err)
+				return errors.Wrap(err, "unmarshaling latest stored resource")
 			}
 			if latestResource.Since.After(r.Since) {
-				return errorMoreRecentVersion
+				return dataError{old: true}
 			}
 		}
 		payload, err := r.MarshalBinary()
 		if err != nil {
-			return fmt.Errorf("marshaling text for resource payload: %+v", err)
+			return errors.Wrap(err, "marshaling text for resource payload")
 		}
 		if err := b.Put(key, payload); err != nil {
-			return fmt.Errorf("putting resource in bucket: %+v", err)
+			return errors.Wrap(err, "putting resource in bucket")
 		}
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("updating database with resource: %+v", err)
-	}
-	return nil
+	return errors.Wrap(err, "updating database with resource")
 }
 
 // Get returns the most recent state of the Resource with the given valid ID
@@ -73,11 +71,11 @@ func (s *Store) Get(id faststatus.ID) (faststatus.Resource, error) {
 		return faststatus.Resource{}, errorDBNotInitialized
 	}
 	if id == (faststatus.ID{}) {
-		return faststatus.Resource{}, fmt.Errorf("cannot get a resource with a zero-value ID")
+		return faststatus.Resource{}, dataError{noID: true}
 	}
 	key, err := id.MarshalBinary()
 	if err != nil {
-		return faststatus.Resource{}, fmt.Errorf("failed to marshal key from id: %+v", err)
+		return faststatus.Resource{}, errors.Wrap(err, "failed to marshal key from id")
 	}
 
 	r := new(faststatus.Resource)
@@ -91,12 +89,12 @@ func (s *Store) Get(id faststatus.ID) (faststatus.Resource, error) {
 			return nil
 		}
 		if err := r.UnmarshalBinary(raw); err != nil {
-			return fmt.Errorf("unmarshaling resource from stored value: %+v", err)
+			return errors.Wrap(err, "unmarshaling resource from stored value")
 		}
 		return nil
 	})
 	if err != nil {
-		return faststatus.Resource{}, fmt.Errorf("viewing database with resource: %+v", err)
+		return faststatus.Resource{}, errors.Wrap(err, "viewing database with resource")
 	}
 	return *r, nil
 }
@@ -104,7 +102,6 @@ func (s *Store) Get(id faststatus.ID) (faststatus.Resource, error) {
 var (
 	errorStoreNotInitialized = fmt.Errorf("store not initialized")
 	errorDBNotInitialized    = fmt.Errorf("no bolt database for store")
-	errorMoreRecentVersion   = fmt.Errorf("a more recent version of this resource already exists in store")
 )
 
 var (
