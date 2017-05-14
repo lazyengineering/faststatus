@@ -257,7 +257,7 @@ func TestHandlerPutToID(t *testing.T) {
 
 	t.Run("store Save conflict", func(t *testing.T) {
 		store := &mockStore{saveFn: func(r faststatus.Resource) error {
-			return staleError{}
+			return conflictError(true)
 		}}
 		var s, err = rest.New(rest.WithStore(store))
 		if err != nil {
@@ -537,12 +537,12 @@ func (s *mockStore) Get(id faststatus.ID) (faststatus.Resource, error) {
 	return s.getFn(id)
 }
 
-type staleError struct{}
+type conflictError bool
 
-func (e staleError) Error() string {
-	return "a stale error"
+func (e conflictError) Error() string {
+	return "a conflict error"
 }
 
-func (e staleError) Stale() bool {
-	return true
+func (e conflictError) Conflict() bool {
+	return bool(e)
 }

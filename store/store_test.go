@@ -85,7 +85,7 @@ func TestSave(t *testing.T) {
 					return tt
 				}(),
 			},
-			store.StaleError,
+			faststatus.ConflictError,
 		},
 		{"Save should not return an error for the most recent valid resource",
 			&store.Store{DB: db},

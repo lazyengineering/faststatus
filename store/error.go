@@ -1,3 +1,6 @@
+// Copyright 2017 Jesse Allen. All rights reserved
+// Released under the MIT license found in the LICENSE file.
+
 package store
 
 import (
@@ -22,33 +25,12 @@ func (e dataError) Error() string {
 	return strings.Join(reasons, ", ")
 }
 
-func (e dataError) Stale() bool {
+func (e dataError) Conflict() bool {
 	return e.old
 }
 
 func (e dataError) ZeroValue() bool {
 	return e.noID
-}
-
-// StaleError checks to see if the error (or its Cause) is a result of stale
-// data. An error value may be a stale data error if it implements this interface:
-//
-//    type staler interface {
-//      Stale() bool
-//    }
-//
-// Otherwise it is not considered stale data.
-func StaleError(e error) bool {
-	type staler interface {
-		Stale() bool
-	}
-	if e, ok := e.(staler); ok {
-		return e.Stale()
-	}
-	if e, ok := errors.Cause(e).(staler); ok {
-		return e.Stale()
-	}
-	return false
 }
 
 // ZeroValueError checks to see if the error (or its Cause) is a result of zero-value

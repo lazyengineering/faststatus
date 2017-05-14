@@ -1,8 +1,13 @@
+// Copyright 2017 Jesse Allen. All rights reserved
+// Released under the MIT license found in the LICENSE file.
+
 package store
 
 import (
 	"errors"
 	"testing"
+
+	"github.com/lazyengineering/faststatus"
 )
 
 func TestDataError(t *testing.T) {
@@ -25,6 +30,9 @@ func TestDataError(t *testing.T) {
 	}
 	if oldOnly1.Error() == allFalse1.Error() {
 		t.Fatalf("expected %s != %s", oldOnly1.Error(), allFalse1.Error())
+	}
+	if !faststatus.ConflictError(oldOnly1) {
+		t.Fatalf("faststatus.ConflictError(%+v) = false, expected true", oldOnly1)
 	}
 
 	var noIDOnly1 error = &dataError{noID: true}
@@ -59,48 +67,8 @@ func TestDataError(t *testing.T) {
 	if allTrue1.Error() == noIDOnly1.Error() {
 		t.Fatalf("expected %s != %s", allTrue1.Error(), noIDOnly1.Error())
 	}
-}
-
-func TestStaleError(t *testing.T) {
-	testCases := []struct {
-		name      string
-		err       error
-		wantStale bool
-	}{
-		{"nil",
-			nil,
-			false,
-		},
-		{"new string",
-			errors.New("an error"),
-			false,
-		},
-		{"zero-value dataError",
-			dataError{},
-			false,
-		},
-		{"zero-id dataError",
-			dataError{noID: true},
-			false,
-		},
-		{"old dataError",
-			dataError{old: true},
-			true,
-		},
-		{"old zero-id dataError",
-			dataError{old: true, noID: true},
-			true,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			got := StaleError(tc.err)
-			if got != tc.wantStale {
-				t.Fatalf("StaleError(%+v) = %v, expected %v", tc.err, got, tc.wantStale)
-			}
-		})
+	if !faststatus.ConflictError(allTrue1) {
+		t.Fatalf("faststatus.ConflictError(%+v) = false, expected true", allTrue1)
 	}
 }
 
