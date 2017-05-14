@@ -105,7 +105,7 @@ func TestSave(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.store.Save(tc.resource)
 			if !tc.wantError(err) {
-				t.Fatalf("%#v(%+v.Save(%+v)) = false, expected true from %+v", tc.wantError, tc.store, tc.resource, err)
+				t.Fatalf("%+v.Save(%+v) error checks false, expected true from %+v", tc.store, tc.resource, err)
 			}
 		})
 	}
@@ -385,7 +385,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			gotResource, err := tc.store.Get(tc.id)
 			if !tc.wantError(err) {
-				t.Fatalf("%#v(%+v.Get(%+v)) = false, expected true from %+v", tc.wantError, tc.store, tc.id, err)
+				t.Fatalf("%+v.Get(%+v) error checks false, expected true from %+v", tc.store, tc.id, err)
 			}
 			if !gotResource.Equal(tc.wantResource) {
 				t.Fatalf("%+v.Get(%+v) = %+v <error>, expected %+v", tc.store, tc.id, gotResource, tc.wantResource)
