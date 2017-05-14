@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/lazyengineering/faststatus"
+	"github.com/lazyengineering/faststatus/store"
 )
 
 // Server is a restful http server for Resources.
@@ -121,7 +122,12 @@ func (s *Server) putResource(id faststatus.ID) handlerFunc {
 				code: http.StatusBadRequest,
 			}
 		}
-		if err := s.store.Save(*resource); err != nil {
+		if err := s.store.Save(*resource); store.StaleError(err) {
+			return &restError{
+				err:  err,
+				code: http.StatusConflict,
+			}
+		} else if err != nil {
 			return fmt.Errorf("saving resource to store: %+v", err)
 		}
 		rb, err := resource.MarshalText()

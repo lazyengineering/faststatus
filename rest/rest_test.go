@@ -152,7 +152,6 @@ func TestHandlerGetNew(t *testing.T) {
 }
 
 func TestHandlerPutToID(t *testing.T) {
-	//TODO(jesse@jessecarl.com): Once the errors can be inspected to identify conflicts, add 409 status
 	//TODO(jesse@jessecarl.com): Content negotiation. For now, everything is text/plain.
 	t.Run("bad requests", func(t *testing.T) {
 		var s, _ = rest.New()
@@ -256,6 +255,31 @@ func TestHandlerPutToID(t *testing.T) {
 		}
 	})
 
+	t.Run("store Save conflict", func(t *testing.T) {
+		store := &mockStore{saveFn: func(r faststatus.Resource) error {
+			return staleError{}
+		}}
+		var s, err = rest.New(rest.WithStore(store))
+		if err != nil {
+			t.Fatalf("unexpected error creating store: %+v", err)
+		}
+
+		resource := faststatus.NewResource()
+		resource.Since = time.Date(2017, 3, 14, 15, 9, 26, 5359, time.UTC)
+		body, _ := resource.MarshalText()
+		id, _ := resource.ID.MarshalText()
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPut, "/"+string(id), bytes.NewReader(body))
+		s.ServeHTTP(w, r)
+		if w.Code != http.StatusConflict {
+			t.Fatalf("returned Status Code %03d, expected %03d", w.Code, http.StatusConflict)
+		}
+		if store.saveCalled != 1 {
+			t.Fatalf("Store Save called %d times, expected exactly once", store.saveCalled)
+		}
+	})
+
 	t.Run("good requests", func(t *testing.T) {
 		goodRequestsSave := func(r faststatus.Resource) bool {
 			path, _ := r.ID.MarshalText()
@@ -303,7 +327,6 @@ func TestHandlerPutToID(t *testing.T) {
 }
 
 func TestHandlerGetFromID(t *testing.T) {
-	//TODO(jesse@jessecarl.com): Once the errors can be inspected to identify conflicts, add 409 status
 	//TODO(jesse@jessecarl.com): Content negotiation. For now, everything is text/plain.
 	t.Run("store get error", func(t *testing.T) {
 		store := &mockStore{getFn: func(faststatus.ID) (faststatus.Resource, error) {
@@ -512,4 +535,14 @@ func (s *mockStore) Save(r faststatus.Resource) error {
 func (s *mockStore) Get(id faststatus.ID) (faststatus.Resource, error) {
 	s.getCalled++
 	return s.getFn(id)
+}
+
+type staleError struct{}
+
+func (e staleError) Error() string {
+	return "a stale error"
+}
+
+func (e staleError) Stale() bool {
+	return true
 }
