@@ -400,6 +400,10 @@ func TestHandlerGetFromID(t *testing.T) {
 				t.Logf("Store Get called %d times, expected exactly once", store.getCalled)
 				return false
 			}
+			if !calledCorrectly {
+				t.Logf("Store Get not called correctly.")
+				return false
+			}
 			var got faststatus.Resource
 			err = (&got).UnmarshalText(w.Body.Bytes())
 			if err != nil {
