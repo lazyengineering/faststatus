@@ -13,7 +13,7 @@ import (
 
 // Server is a restful http server for Resources.
 type Server struct {
-	store Store
+	Store Store
 }
 
 // Store gets and saves Resources.
@@ -24,25 +24,6 @@ type Store interface {
 
 // ServerOpt is used to configure a Server
 type ServerOpt func(*Server) error
-
-// New provides a restful endpoint for managing faststatus Resources.
-func New(opts ...ServerOpt) (*Server, error) {
-	s := &Server{}
-	for _, opt := range opts {
-		if err := opt(s); err != nil {
-			return nil, err
-		}
-	}
-	return s, nil
-}
-
-// WithStore configures a Server to use the provided Store.
-func WithStore(store Store) ServerOpt {
-	return func(s *Server) error {
-		s.store = store
-		return nil
-	}
-}
 
 // ServeHTTP implements the http.Handler interface.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +102,7 @@ func (s *Server) putResource(id faststatus.ID) handlerFunc {
 				code: http.StatusBadRequest,
 			}
 		}
-		if err := s.store.Save(*resource); faststatus.ConflictError(err) {
+		if err := s.Store.Save(*resource); faststatus.ConflictError(err) {
 			return &restError{
 				err:  err,
 				code: http.StatusConflict,
@@ -140,7 +121,7 @@ func (s *Server) putResource(id faststatus.ID) handlerFunc {
 
 func (s *Server) getResource(id faststatus.ID) handlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		resource, err := s.store.Get(id)
+		resource, err := s.Store.Get(id)
 		if err != nil {
 			return fmt.Errorf("getting resource from store: %+v", err)
 		}
