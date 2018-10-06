@@ -22,7 +22,7 @@ import (
 )
 
 func TestHandlerOnlyValidPaths(t *testing.T) {
-	var s, _ = rest.New()
+	var s = &rest.Server{}
 	invalidPathIsNotFound := func(method, path string) bool {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(method, path, nil)
@@ -46,14 +46,16 @@ func TestHandlerOnlyValidPaths(t *testing.T) {
 }
 
 func TestHandlerOnlyValidPathsAndMethods(t *testing.T) {
-	var s, _ = rest.New(rest.WithStore(&mockStore{
-		saveFn: func(faststatus.Resource) error {
-			return fmt.Errorf("an error")
+	var s = &rest.Server{
+		Store: &mockStore{
+			saveFn: func(faststatus.Resource) error {
+				return fmt.Errorf("an error")
+			},
+			getFn: func(faststatus.ID) (faststatus.Resource, error) {
+				return faststatus.Resource{}, fmt.Errorf("an error")
+			},
 		},
-		getFn: func(faststatus.ID) (faststatus.Resource, error) {
-			return faststatus.Resource{}, fmt.Errorf("an error")
-		},
-	}))
+	}
 	isNotAllowed := func(method, path string) bool {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(method, path, nil)
@@ -88,7 +90,7 @@ func TestHandlerOnlyValidPathsAndMethods(t *testing.T) {
 
 func TestHandlerGetNew(t *testing.T) {
 	const defaultContentType = "text/plain"
-	var s, _ = rest.New()
+	var s = &rest.Server{}
 	var mu sync.Mutex
 	var usedIDs = make(map[faststatus.ID]struct{})
 	getsNewResource := func() bool {
@@ -154,7 +156,7 @@ func TestHandlerGetNew(t *testing.T) {
 func TestHandlerPutToID(t *testing.T) {
 	//TODO(jesse@jessecarl.com): Content negotiation. For now, everything is text/plain.
 	t.Run("bad requests", func(t *testing.T) {
-		var s, _ = rest.New()
+		var s = &rest.Server{}
 		rejectsBadRequests := func(path string, body []byte) bool {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPut, path, bytes.NewReader(body))
@@ -221,7 +223,7 @@ func TestHandlerPutToID(t *testing.T) {
 		id, _ := faststatus.NewID()
 		b, _ := id.MarshalText()
 
-		var s, _ = rest.New()
+		var s = &rest.Server{}
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodPut, "/"+string(b), errorReader{})
 		s.ServeHTTP(w, r)
@@ -234,10 +236,7 @@ func TestHandlerPutToID(t *testing.T) {
 		store := &mockStore{saveFn: func(r faststatus.Resource) error {
 			return fmt.Errorf("an error")
 		}}
-		var s, err = rest.New(rest.WithStore(store))
-		if err != nil {
-			t.Fatalf("unexpected error creating store: %+v", err)
-		}
+		var s = &rest.Server{Store: store}
 
 		resource := faststatus.NewResource()
 		resource.Since = time.Date(2017, 3, 14, 15, 9, 26, 5359, time.UTC)
@@ -259,10 +258,7 @@ func TestHandlerPutToID(t *testing.T) {
 		store := &mockStore{saveFn: func(r faststatus.Resource) error {
 			return conflictError(true)
 		}}
-		var s, err = rest.New(rest.WithStore(store))
-		if err != nil {
-			t.Fatalf("unexpected error creating store: %+v", err)
-		}
+		var s = &rest.Server{Store: store}
 
 		resource := faststatus.NewResource()
 		resource.Since = time.Date(2017, 3, 14, 15, 9, 26, 5359, time.UTC)
@@ -296,7 +292,7 @@ func TestHandlerPutToID(t *testing.T) {
 				},
 			}
 
-			s, _ := rest.New(rest.WithStore(store))
+			s := &rest.Server{Store: store}
 			s.ServeHTTP(w, req)
 			if w.Code != http.StatusOK {
 				t.Logf("returned Status Code %03d, expected %03d", w.Code, http.StatusOK)
@@ -332,10 +328,7 @@ func TestHandlerGetFromID(t *testing.T) {
 		store := &mockStore{getFn: func(faststatus.ID) (faststatus.Resource, error) {
 			return faststatus.Resource{}, fmt.Errorf("an error")
 		}}
-		var s, err = rest.New(rest.WithStore(store))
-		if err != nil {
-			t.Fatalf("unexpected error creating store: %+v", err)
-		}
+		var s = &rest.Server{Store: store}
 
 		id, _ := faststatus.NewID()
 		idB, _ := id.MarshalText()
@@ -355,10 +348,7 @@ func TestHandlerGetFromID(t *testing.T) {
 		store := &mockStore{getFn: func(faststatus.ID) (faststatus.Resource, error) {
 			return faststatus.Resource{}, nil
 		}}
-		var s, err = rest.New(rest.WithStore(store))
-		if err != nil {
-			t.Fatalf("unexpected error creating store: %+v", err)
-		}
+		var s = &rest.Server{Store: store}
 
 		id, _ := faststatus.NewID()
 		idB, _ := id.MarshalText()
@@ -382,10 +372,7 @@ func TestHandlerGetFromID(t *testing.T) {
 				calledCorrectly = id == resource.ID
 				return resource, nil
 			}}
-			var s, err = rest.New(rest.WithStore(store))
-			if err != nil {
-				t.Fatalf("unexpected error creating store: %+v", err)
-			}
+			var s = &rest.Server{Store: store}
 
 			idB, _ := resource.ID.MarshalText()
 
@@ -405,7 +392,7 @@ func TestHandlerGetFromID(t *testing.T) {
 				return false
 			}
 			var got faststatus.Resource
-			err = (&got).UnmarshalText(w.Body.Bytes())
+			err := (&got).UnmarshalText(w.Body.Bytes())
 			if err != nil {
 				t.Logf("Response body failed to unmarshal to Resource: %+v", err)
 				return false
