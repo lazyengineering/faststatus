@@ -200,6 +200,65 @@ func TestTextDecoderDecodeLimitsReads(t *testing.T) {
 
 }
 
+func TestMultiDecoderDecode(t *testing.T) {
+	testCases := []struct {
+		name                 string
+		responses            []error
+		wantNegotiationError bool // assumes wantError is also true
+		wantError            bool
+		wantCalls            int
+	}{
+		{"Content negotiation errors are ignored",
+			[]error{rest.ErrorContentType("foo"), nil},
+			false,
+			false,
+			2,
+		},
+		{"Any other errors return immediately",
+			[]error{rest.ErrorContentType("foo"), errors.New("something"), nil},
+			false,
+			true,
+			2,
+		},
+		{"Success returns immediately",
+			[]error{rest.ErrorContentType("foo"), nil, errors.New("something")},
+			false,
+			false,
+			2,
+		},
+		{"No success or errors is a content negotiation error",
+			[]error{rest.ErrorContentType("foo"), rest.ErrorContentType("bar"), rest.ErrorContentType("baz")},
+			true,
+			true,
+			3,
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			var called int
+			md := rest.MultiDecoder{}
+			for _, d := range tc.responses {
+				e := d
+				md = append(md, &mockDecoder{func(string, io.Reader, interface{}) error {
+					called++
+					return e
+				}})
+			}
+			err := md.Decode("testing/test", nil, &struct{ Foo string }{})
+			if (err != nil) != tc.wantError {
+				t.Fatalf("MultiDecoder.Decode() returned error %v, expected error? %v", err, tc.wantError)
+			}
+			if err != nil && rest.ContentTypeError(err) != tc.wantNegotiationError {
+				t.Fatalf("MultiDecoder.Decode() error with negotiation %v, expected %v", rest.ContentTypeError(err), tc.wantNegotiationError)
+			}
+			if called != tc.wantCalls {
+				t.Fatalf("MultiDecoder.Decode() returned after %d calls, expected %d", called, tc.wantCalls)
+			}
+		})
+	}
+}
+
 type mockJSONUnmarshaler struct {
 	unmarshalFn func([]byte) error
 }
@@ -222,4 +281,12 @@ type mockReader struct {
 
 func (r *mockReader) Read(b []byte) (int, error) {
 	return r.readFn(b)
+}
+
+type mockDecoder struct {
+	decode func(string, io.Reader, interface{}) error
+}
+
+func (d *mockDecoder) Decode(ct string, r io.Reader, v interface{}) error {
+	return d.decode(ct, r, v)
 }

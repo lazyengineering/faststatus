@@ -22,9 +22,6 @@ type Store interface {
 	Get(faststatus.ID) (faststatus.Resource, error)
 }
 
-// ServerOpt is used to configure a Server
-type ServerOpt func(*Server) error
-
 // ServeHTTP implements the http.Handler interface.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := s.serveHTTP(w, r)

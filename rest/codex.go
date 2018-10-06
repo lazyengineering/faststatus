@@ -11,17 +11,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ask for content type and reader
-// return generic decode function
-// *or*
-// ask for content type, reader, and destination interface
-// return error
-//
-// implement the same interface for single content-type support as for multi
-
 // Decoder is used to read and decode values from an input stream claiming to be
 // the provided content type (MIME type). A typical implementation may return a
 // content negotiation error for unsupported content types.
+//
+// Because negotiation happens before reading, it is safe to Decode with another
+// Decoder in case of a content negotiation error.
 type Decoder interface {
 	Decode(contentType string, r io.Reader, v interface{}) error
 }
@@ -75,6 +70,22 @@ func (d *TextDecoder) Decode(contentType string, r io.Reader, v interface{}) err
 	}
 
 	return errors.Wrap(um.UnmarshalText(b), "unmarshaling text")
+}
+
+// MultiDecoder is used to decode from one of multiple possible decoders.
+// Returns the first successful result or the first error that is not a
+// ContentTypeError.
+type MultiDecoder []Decoder
+
+// Decode implements the Decoder interface with an ordered set of Decoders.
+func (dd MultiDecoder) Decode(contentType string, r io.Reader, v interface{}) error {
+	for _, d := range dd {
+		err := d.Decode(contentType, r, v)
+		if err == nil || !ContentTypeError(err) {
+			return err
+		}
+	}
+	return ErrorContentType(contentType)
 }
 
 // ContentTypeError indicated if the error is a content negotiation error.
