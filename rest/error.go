@@ -6,6 +6,8 @@ package rest
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 type restError struct {
@@ -25,7 +27,7 @@ func errorCode(e error) int {
 	type codeError interface {
 		Code() int
 	}
-	if e, ok := e.(codeError); ok {
+	if e, ok := errors.Cause(e).(codeError); ok {
 		return e.Code()
 	}
 	return http.StatusInternalServerError
